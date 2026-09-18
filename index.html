@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.17.0">
+    <meta name="app-version" content="9.18.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -123,9 +123,9 @@
     <p style="font-size: 0.85rem; color: #666;">Masukkan PIN Akses untuk masuk ke sistem.</p>
     <div class="form-group" style="text-align: left;">
         <label>PIN Akses</label>
-        <input type="password" id="appPinInput" inputmode="numeric" maxlength="15" placeholder="Masukkan PIN..." onkeydown="if(event.key==='Enter') verifyAppPin()">
+        <input type="password" id="appPinInput" inputmode="numeric" maxlength="15" placeholder="Masukkan PIN...">
     </div>
-    <button type="button" id="loginBtn" class="btn-primary" onclick="verifyAppPin()">Masuk (Buka Akses)</button>
+    <button type="button" id="loginBtn" class="btn-primary">Masuk (Buka Akses)</button>
 </div>
 
 <div id="appMainContainer" style="display: none;">
@@ -133,7 +133,7 @@
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
         <div style="display: flex; align-items: center; gap: 10px;">
             <h2 style="margin: 0;">Pencatatan Keuangan Pusat AWW</h2>
-            <button class="btn-cancel" onclick="handleLogout()" style="width: auto; padding: 5px 10px; font-size: 0.8rem;">Kunci Aplikasi 🔒</button>
+            <button class="btn-cancel" id="logoutBtn" style="width: auto; padding: 5px 10px; font-size: 0.8rem;">Kunci Aplikasi 🔒</button>
         </div>
         <button class="btn-link-share" onclick="openLinkModal()">🔗 Bagikan Tautan Akses & QR</button>
     </div>
@@ -574,13 +574,22 @@
 
     const APP_LOGIN_PIN = "1971061289";
 
-    // Cek status sesi lokal
     document.addEventListener("DOMContentLoaded", () => {
         const isAppUnlocked = sessionStorage.getItem("aww_app_unlocked") === "true";
         if (isAppUnlocked) {
             showAppMain();
         } else {
             showLoginCard();
+        }
+
+        const loginBtn = document.getElementById('loginBtn');
+        if (loginBtn) {
+            loginBtn.addEventListener('click', verifyAppPin);
+        }
+
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', handleLogout);
         }
 
         const pinInput = document.getElementById('appPinInput');
@@ -592,30 +601,36 @@
     });
 
     function verifyAppPin() {
-        const enteredPin = document.getElementById('appPinInput').value.trim();
+        const pinInputEl = document.getElementById('appPinInput');
+        if (!pinInputEl) return;
+        const enteredPin = pinInputEl.value.trim();
         if (enteredPin === APP_LOGIN_PIN) {
             sessionStorage.setItem("aww_app_unlocked", "true");
             showAppMain();
         } else {
             alert('PIN Akses Salah!');
-            document.getElementById('appPinInput').value = '';
-            document.getElementById('appPinInput').focus();
+            pinInputEl.value = '';
+            pinInputEl.focus();
         }
     }
 
     function showAppMain() {
-        document.getElementById('loginCard').style.display = 'none';
-        document.getElementById('appMainContainer').style.display = 'block';
+        const loginCard = document.getElementById('loginCard');
+        const mainContainer = document.getElementById('appMainContainer');
+        if (loginCard) loginCard.style.display = 'none';
+        if (mainContainer) mainContainer.style.display = 'block';
         renderAll();
         loadStoreClosings();
     }
 
     function showLoginCard() {
-        document.getElementById('loginCard').style.display = 'block';
-        document.getElementById('appMainContainer').style.display = 'none';
+        const loginCard = document.getElementById('loginCard');
+        const mainContainer = document.getElementById('appMainContainer');
+        if (loginCard) loginCard.style.display = 'block';
+        if (mainContainer) mainContainer.style.display = 'none';
         setTimeout(() => {
             const input = document.getElementById('appPinInput');
-            if(input) input.focus();
+            if (input) input.focus();
         }, 100);
     }
 
@@ -661,7 +676,7 @@
             closeSlide2AuthModal();
             switchSlide(2);
         } else {
-            alert('PIN salah! Hanya PIN Brankas Permen Tukar, PIN Master, atau PIN Akses Utama yang dapat mengakses Slide 2.');
+            alert('PIN salah!');
             document.getElementById('slide2PinInput').value = '';
         }
     }
