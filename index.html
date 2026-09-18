@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.46.0">
+    <meta name="app-version" content="9.50.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -147,6 +147,14 @@
         </div>
 
         <div class="card">
+            <h3>🔑 Pengaturan Master PIN (Owner PIN)</h3>
+            <div style="display: flex; gap: 10px; align-items: center; max-width: 400px;">
+                <input type="password" id="masterPinInput" maxlength="6" style="text-align: center; letter-spacing: 3px;" placeholder="••••">
+                <button type="button" class="btn-submit" onclick="updateMasterPin()" style="width: auto; padding: 12px 20px;">Simpan PIN</button>
+            </div>
+        </div>
+
+        <div class="card">
             <h3 style="margin-bottom: 10px;">Rekap Perputaran Brankas Permen (<span id="currentMonthLabel"></span>)</h3>
             <div id="summaryContentArea"></div>
         </div>
@@ -211,7 +219,7 @@
             <div class="table-responsive">
                 <table>
                     <thead>
-                        <tr><th>Waktu Hapus</th><th>Brankas</th><th>Jenis</th><th>Nominal</th><th>Keterangan Asli</th><th>Alasan Penghapusan</th></tr>
+                        <tr><th>Waktu Hapus</th><th>Brankas Sumber</th><th>Jenis</th><th>Nominal</th><th>Keterangan Asli</th><th>Alasan Penghapusan</th></tr>
                     </thead>
                     <tbody id="auditTrailTableBody">
                         <tr><td colspan="6" style="text-align: center; color: #777;">Belum ada riwayat penghapusan.</td></tr>
@@ -471,9 +479,14 @@
                         if (found && found.pin) v.pin = found.pin;
                     });
                 }
-                if (data.masterPin) masterPin = data.masterPin;
+                if (data.masterPin) {
+                    masterPin = data.masterPin;
+                    document.getElementById('masterPinInput').value = masterPin;
+                }
                 transactions = data.transactions || [];
                 deletionLogs = data.deletionLogs || [];
+            } else {
+                document.getElementById('masterPinInput').value = masterPin;
             }
             renderAll();
         });
@@ -491,6 +504,14 @@
             transactions,
             deletionLogs
         });
+    }
+
+    function updateMasterPin() {
+        let newPin = document.getElementById('masterPinInput').value.trim();
+        if (!newPin) { alert('PIN Owner tidak boleh kosong!'); return; }
+        masterPin = newPin;
+        syncToCloud();
+        alert('Master PIN (Owner PIN) berhasil diperbarui!');
     }
 
     function switchSlide(num) {
@@ -834,8 +855,14 @@
     }
 
     function requestDeleteTx(txId) {
-        promptPin('Verifikasi Keamanan Hapus', 'Masukkan Master PIN untuk menghapus transaksi:', (pin) => {
-            if (pin === masterPin) {
+        let tx = transactions.find(t => t.id === txId);
+        let vault = vaults.find(v => v.id === tx.vaultId);
+        let vaultName = vault ? vault.name : 'Brankas';
+
+        promptPin('Verifikasi Penghapusan', `Masukkan Master PIN atau PIN ${vaultName} untuk menghapus:`, (pin) => {
+            if (pin === masterPin || (vault && pin === vault.pin)) {
+                // Simpan nama brankas yang digunakan untuk otorisasi penghapusan ke elemen tersembunyi/variabel
+                window.activeDeletingVaultName = vaultName;
                 document.getElementById('modalDeleteTxId').value = txId;
                 document.getElementById('deleteReasonInput').value = '';
                 document.getElementById('deleteReasonModal').style.display = 'flex';
@@ -854,7 +881,8 @@
         let tx = transactions.find(t => t.id === txId);
         if (tx) {
             let now = new Date();
-            deletionLogs.push({ ...tx, reason, deletedAt: `${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID')}` });
+            let vaultSource = window.activeDeletingVaultName || 'Brankas';
+            deletionLogs.push({ ...tx, vaultSource, reason, deletedAt: `${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID')}` });
             transactions = transactions.filter(t => t.id !== txId);
             syncToCloud();
             document.getElementById('deleteReasonModal').style.display = 'none';
@@ -931,8 +959,15 @@
             return;
         }
         deletionLogs.slice().reverse().forEach(log => {
-            let vObj = vaults.find(v => v.id === log.vaultId);
-            tbody.innerHTML += `<tr><td>${log.deletedAt}</td><td><b>${vObj ? vObj.name : log.vaultId}</b></td><td class="${log.type}">${log.type.toUpperCase()}</td><td class="${log.type}">${formatRp(log.amount)}</td><td>${log.description}</td><td style="color: #c62828; font-weight: bold;">${log.reason}</td></tr>`;
+            let sourceLabel = log.vaultSource || 'Brankas';
+            tbody.innerHTML += `<tr>
+                <td>${log.deletedAt}</td>
+                <td><b style="color:#1565c0;">${sourceLabel}</b></td>
+                <td class="${log.type}">${log.type.toUpperCase()}</td>
+                <td class="${log.type}">${formatRp(log.amount)}</td>
+                <td>${log.description}</td>
+                <td style="color: #c62828; font-weight: bold;">${log.reason}</td>
+            </tr>`;
         });
     }
 
