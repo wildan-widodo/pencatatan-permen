@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.53.0">
+    <meta name="app-version" content="9.54.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -210,7 +210,10 @@
         </div>
 
         <div class="card" id="auditTrailCard">
-            <h3 style="color: #c62828; margin-bottom: 10px;">🛡️ Audit Trail (Riwayat Penghapusan Transaksi)</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="color: #c62828; margin: 0;">🛡️ Audit Trail (Riwayat Penghapusan Transaksi)</h3>
+                <button type="button" id="unlockAuditBtn" class="btn-submit" onclick="requestUnlockAuditTrail()" style="background: #673ab7; width: auto; padding: 6px 12px; font-size: 0.85rem;">🔑 Buka dengan Master PIN</button>
+            </div>
             <div class="table-responsive">
                 <table>
                     <thead>
@@ -419,6 +422,7 @@
     let deletionLogs = [];
     let storeClosings = [];
     let activeTabVaultId = 'b1';
+    let isAuditTrailUnlocked = false; // Status keamanan khusus untuk Audit Trail
     let selectedStoreFilter = null;
     let pendingPinCallback = null;
     let storeNames = ['AWW Sambi', 'AWW Beji', 'AWW Bandung', 'AWW Trenggalek', 'AWW Ponorogo'];
@@ -497,9 +501,21 @@
     }
 
     function requestUnlockAllVaults() {
-        promptPin('Buka Semua Akses', 'Masukkan Master PIN untuk membuka seluruh brankas sekaligus:', (pin) => {
+        promptPin('Buka Semua Akses', 'Masukkan Master PIN untuk membuka seluruh brankas dan Audit Trail sekaligus:', (pin) => {
             if (pin === masterPin) {
                 vaults.forEach(v => v.isUnlocked = true);
+                isAuditTrailUnlocked = true; // Audit trail ikut terbuka otomatis jika Master PIN dimasukkan
+                renderAll();
+                return true;
+            }
+            return false;
+        });
+    }
+
+    function requestUnlockAuditTrail() {
+        promptPin('Buka Keamanan Audit Trail', 'Masukkan Master PIN untuk melihat riwayat penghapusan:', (pin) => {
+            if (pin === masterPin) {
+                isAuditTrailUnlocked = true;
                 renderAll();
                 return true;
             }
@@ -554,11 +570,18 @@
         let vault = vaults.find(v => v.id === vaultId);
         if (vault.isUnlocked) {
             vault.isUnlocked = false;
+            // Jika semua brankas dikunci kembali, audit trail juga dikunci kembali demi keamanan
+            if (!vaults.some(v => v.isUnlocked)) isAuditTrailUnlocked = false;
             renderAll();
         } else {
             promptPin(`Buka Brankas: ${vault.name}`, 'Masukkan PIN brankas atau Master PIN:', (enteredPin) => {
                 if (enteredPin === vault.pin || enteredPin === masterPin) {
                     vault.isUnlocked = true;
+                    // Jika yang dimasukkan adalah Master PIN, otomatis buka semua brankas dan audit trail
+                    if (enteredPin === masterPin) {
+                        vaults.forEach(v => v.isUnlocked = true);
+                        isAuditTrailUnlocked = true;
+                    }
                     renderAll();
                     return true;
                 }
@@ -773,7 +796,16 @@
     function renderTransactions() {
         const container = document.getElementById('historyContent');
         if (!container) return;
-        if (activeTabVaultId !== 'all') {
+        
+        // Cek keamanan tab "Semua Brankas" atau tab individual
+        if (activeTabVaultId === 'all') {
+            // Jika tab "Semua Brankas", pastikan minimal salah satu brankas terbuka atau user bisa melihatnya jika semua terbuka
+            let anyUnlocked = vaults.some(v => v.isUnlocked);
+            if (!anyUnlocked) {
+                container.innerHTML = `<p style="text-align:center; color:#c62828;">Riwayat semua brankas dikunci. Buka setidaknya satu brankas atau gunakan Master PIN untuk melihat riwayat keseluruhan.</p>`;
+                return;
+            }
+        } else {
             let v = vaults.find(x => x.id === activeTabVaultId);
             if (!v || !v.isUnlocked) {
                 container.innerHTML = `<p style="text-align:center; color:#c62828;">Brankas terkunci. Masukkan PIN untuk melihat riwayat transaksi.</p>`;
@@ -796,14 +828,15 @@
             transactions.slice().reverse().forEach(tx => {
                 let vObj = vaults.find(v => v.id === tx.vaultId);
                 let canView = vObj && vObj.isUnlocked;
+                if (!canView) return; // Sembunyikan transaksi dari brankas yang masih terkunci
                 html += `<tr>
                     <td><button class="btn-edit" onclick="requestEditTx(${tx.id})">✏️</button><button class="btn-trash" onclick="requestDeleteTx(${tx.id})">🗑️</button></td>
                     <td><b>${vObj ? vObj.name : ''}</b></td>
                     <td>${tx.date} ${tx.time}</td>
                     <td class="${tx.type}">${tx.type.toUpperCase()}</td>
                     <td>${tx.description}</td>
-                    <td class="${tx.type}">${canView ? (tx.type==='masuk'?'+':'-')+formatRp(tx.amount) : 'Rp ••••••••'}</td>
-                    <td>${canView ? getVerticalDetails(tx.details) : 'Terkunci'}</td>
+                    <td class="${tx.type}">${formatRp(tx.amount)}</td>
+                    <td>${getVerticalDetails(tx.details)}</td>
                 </tr>`;
             });
             html += `</tbody></table>`;
@@ -944,7 +977,16 @@
 
     function renderAuditTrail() {
         const tbody = document.getElementById('auditTrailTableBody');
+        const unlockBtn = document.getElementById('unlockAuditBtn');
         if (!tbody) return;
+
+        if (!isAuditTrailUnlocked) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #c62828;">🔒 Audit Trail Dikunci. Masukkan Master PIN untuk membuka.</td></tr>`;
+            if (unlockBtn) unlockBtn.style.display = 'inline-block';
+            return;
+        }
+
+        if (unlockBtn) unlockBtn.style.display = 'none';
         tbody.innerHTML = '';
         if (deletionLogs.length === 0) {
             tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #777;">Belum ada riwayat penghapusan.</td></tr>`;
@@ -1165,7 +1207,7 @@
         document.getElementById('linkModal').style.display = 'flex';
         const url = window.location.href;
         document.getElementById('appUrlInput').value = url;
-        document.getElementById('qrcodeContainer').innerHTML = '';
+        document.getElementById('qrcodeContainer').innerHTML = **`clear`**; // placeholder reset
         new QRCode(document.getElementById('qrcodeContainer'), { text: url, width: 140, height: 140 });
     }
 
