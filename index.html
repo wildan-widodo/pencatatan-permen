@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.24.0">
+    <meta name="app-version" content="9.26.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -420,19 +420,6 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    document.addEventListener("DOMContentLoaded", () => {
-        vaults.forEach(v => v.isUnlocked = true);
-        renderAll();
-        loadStoreClosings();
-    });
-
-    function switchSlide(slideNum) {
-        document.getElementById('slide1').className = slideNum === 1 ? 'slide-section active' : 'slide-section';
-        document.getElementById('slide2').className = slideNum === 2 ? 'slide-section active' : 'slide-section';
-        document.getElementById('navSlide1').className = slideNum === 1 ? 'main-nav-btn active' : 'main-nav-btn';
-        document.getElementById('navSlide2').className = slideNum === 2 ? 'main-nav-btn active' : 'main-nav-btn';
-    }
-
     let vaults = [
         { id: 'b1', name: 'Brankas Gudang', pin: '1234', isUnlocked: true },
         { id: 'b2', name: 'Brankas Permen Tukar', pin: '5678', isUnlocked: true },
@@ -472,16 +459,28 @@
     let activeTabVaultId = 'b1';
     const storeNames = ['AWW Sambi', 'AWW Beji', 'AWW Bandung', 'AWW Trenggalek', 'AWW Ponorogo'];
 
-    db.ref('vaults_data').on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-            if (data.masterPin) masterPin = data.masterPin;
-            if (data.transactions) transactions = data.transactions;
-            if (data.deletionLogs) deletionLogs = data.deletionLogs;
-        }
-        vaults.forEach(v => v.isUnlocked = true);
+    document.addEventListener("DOMContentLoaded", () => {
         renderAll();
+        loadStoreClosings();
+
+        db.ref('vaults_data').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                if (data.masterPin) masterPin = data.masterPin;
+                if (data.transactions) transactions = data.transactions;
+                if (data.deletionLogs) deletionLogs = data.deletionLogs;
+            }
+            vaults.forEach(v => v.isUnlocked = true);
+            renderAll();
+        });
     });
+
+    function switchSlide(slideNum) {
+        document.getElementById('slide1').className = slideNum === 1 ? 'slide-section active' : 'slide-section';
+        document.getElementById('slide2').className = slideNum === 2 ? 'slide-section active' : 'slide-section';
+        document.getElementById('navSlide1').className = slideNum === 1 ? 'main-nav-btn active' : 'main-nav-btn';
+        document.getElementById('navSlide2').className = slideNum === 2 ? 'main-nav-btn active' : 'main-nav-btn';
+    }
 
     function loadStoreClosings() {
         db.ref('store_closings').on('value', (snapshot) => {
