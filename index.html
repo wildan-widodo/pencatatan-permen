@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.50.0">
+    <meta name="app-version" content="9.53.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -134,24 +134,19 @@
 
     <!-- SLIDE 1: PENCATATAN BRANKAS -->
     <div class="slide-section active" id="slide1">
-        <div class="total-card" id="grandTotalCard">
+        <div class="total-card" id="grandTotalCard" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <div>
-                <h3 id="grandTotalTitle">Total Saldo Keseluruhan</h3>
+                <h3 id="grandTotalTitle" style="margin: 0; color: white;">Total Saldo Keseluruhan</h3>
                 <div id="grandTotalBalanceContainer" style="font-size: 1.5rem; font-weight: bold; margin-top: 5px;">Rp 0</div>
+            </div>
+            <div>
+                <button type="button" class="btn-submit" onclick="requestUnlockAllVaults()" style="background: #ff9800; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer;">🔓 Buka Semua dengan Master PIN</button>
             </div>
         </div>
 
         <div class="card">
             <h3>Saldo & Keamanan Brankas Permen</h3>
             <div class="vault-grid" id="vaultContainer"></div>
-        </div>
-
-        <div class="card">
-            <h3>🔑 Pengaturan Master PIN (Owner PIN)</h3>
-            <div style="display: flex; gap: 10px; align-items: center; max-width: 400px;">
-                <input type="password" id="masterPinInput" maxlength="6" style="text-align: center; letter-spacing: 3px;" placeholder="••••">
-                <button type="button" class="btn-submit" onclick="updateMasterPin()" style="width: auto; padding: 12px 20px;">Simpan PIN</button>
-            </div>
         </div>
 
         <div class="card">
@@ -479,14 +474,9 @@
                         if (found && found.pin) v.pin = found.pin;
                     });
                 }
-                if (data.masterPin) {
-                    masterPin = data.masterPin;
-                    document.getElementById('masterPinInput').value = masterPin;
-                }
+                if (data.masterPin) masterPin = data.masterPin;
                 transactions = data.transactions || [];
                 deletionLogs = data.deletionLogs || [];
-            } else {
-                document.getElementById('masterPinInput').value = masterPin;
             }
             renderAll();
         });
@@ -506,12 +496,15 @@
         });
     }
 
-    function updateMasterPin() {
-        let newPin = document.getElementById('masterPinInput').value.trim();
-        if (!newPin) { alert('PIN Owner tidak boleh kosong!'); return; }
-        masterPin = newPin;
-        syncToCloud();
-        alert('Master PIN (Owner PIN) berhasil diperbarui!');
+    function requestUnlockAllVaults() {
+        promptPin('Buka Semua Akses', 'Masukkan Master PIN untuk membuka seluruh brankas sekaligus:', (pin) => {
+            if (pin === masterPin) {
+                vaults.forEach(v => v.isUnlocked = true);
+                renderAll();
+                return true;
+            }
+            return false;
+        });
     }
 
     function switchSlide(num) {
@@ -856,12 +849,11 @@
 
     function requestDeleteTx(txId) {
         let tx = transactions.find(t => t.id === txId);
-        let vault = vaults.find(v => v.id === tx.vaultId);
-        let vaultName = vault ? vault.name : 'Brankas';
+        let txVault = vaults.find(v => v.id === tx.vaultId);
+        let vaultName = txVault ? txVault.name : 'Brankas';
 
         promptPin('Verifikasi Penghapusan', `Masukkan Master PIN atau PIN ${vaultName} untuk menghapus:`, (pin) => {
-            if (pin === masterPin || (vault && pin === vault.pin)) {
-                // Simpan nama brankas yang digunakan untuk otorisasi penghapusan ke elemen tersembunyi/variabel
+            if (pin === masterPin || (txVault && pin === txVault.pin)) {
                 window.activeDeletingVaultName = vaultName;
                 document.getElementById('modalDeleteTxId').value = txId;
                 document.getElementById('deleteReasonInput').value = '';
