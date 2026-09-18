@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.35.0">
+    <meta name="app-version" content="9.40.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -31,6 +31,8 @@
         .vault-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 15px; }
         .vault-card { background: #eef2f5; padding: 15px; border-radius: 6px; border-left: 5px solid #2e7d32; position: relative; }
         .vault-card .balance { font-size: 1.2rem; font-weight: bold; color: #2e7d32; margin-bottom: 10px; }
+        .vault-card .pin-btn { background: #c62828; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; margin-top: 8px; }
+        .vault-card .pin-btn.unlocked { background: #2e7d32; }
 
         .filter-bar { background: #f1f3f5; padding: 12px; border-radius: 6px; margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         .filter-bar select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.95rem; width: auto; flex: 1; }
@@ -93,7 +95,6 @@
         .masuk { color: #2e7d32; font-weight: bold; }
         .keluar { color: #c62828; font-weight: bold; }
         .vertical-details { font-size: 0.8rem; line-height: 1.3; }
-        .vertical-expense-list { font-size: 0.82rem; line-height: 1.4; white-space: normal; max-width: 220px; }
     </style>
 </head>
 <body>
@@ -121,13 +122,13 @@
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
         <h2 style="margin: 0;">Pencatatan Keuangan Pusat AWW</h2>
         <div style="display: flex; gap: 8px;">
-            <button class="btn-link-share" onclick="openLinkModal()">🔗 Bagikan Tautan & QR</button>
+            <button class="btn-link-share" onclick="openLinkModal()">🔗 Tautan & QR</button>
             <button class="btn-cancel" onclick="handleLogout()" style="width: auto; padding: 6px 12px; font-size: 0.85rem;">🚪 Keluar</button>
         </div>
     </div>
 
     <div class="main-nav">
-        <button class="main-nav-btn active" id="navSlide1" onclick="switchSlide(1)">📁 Slide 1: Pencatatan Brankas Permen</button>
+        <button class="main-nav-btn active" id="navSlide1" onclick="switchSlide(1)">📁 Slide 1: Brankas Permen</button>
         <button class="main-nav-btn" id="navSlide2" onclick="switchSlide(2)">🏪 Slide 2: Rekap 5 Toko AWW</button>
     </div>
 
@@ -135,7 +136,7 @@
     <div class="slide-section active" id="slide1">
         <div class="total-card" id="grandTotalCard">
             <div>
-                <h3>Total Saldo Keseluruhan (Terbuka Penuh)</h3>
+                <h3 id="grandTotalTitle">Total Saldo Keseluruhan</h3>
                 <div id="grandTotalBalanceContainer" style="font-size: 1.5rem; font-weight: bold; margin-top: 5px;">Rp 0</div>
             </div>
         </div>
@@ -289,7 +290,20 @@
     </div>
 </div>
 
-<!-- MODAL-MODAL PENDUKUNG -->
+<!-- MODAL PIN & VERIFIKASI -->
+<div class="modal" id="pinModal">
+    <div class="modal-content" style="width: 320px;">
+        <h3 id="pinModalTitle">Masukkan PIN Brankas</h3>
+        <p style="font-size: 0.85rem; color: #666;" id="pinModalInfo"></p>
+        <input type="password" id="pinInputVal" placeholder="Masukkan 4 digit PIN" maxlength="6" style="text-align: center; letter-spacing: 5px; font-size: 1.3rem; margin-bottom: 15px;">
+        <div class="modal-buttons">
+            <button class="btn-cancel" onclick="closePinModal()">Batal</button>
+            <button class="btn-submit" onclick="verifyPinAction()">Buka</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL-MODAL LAINNYA -->
 <div class="modal" id="exchangeReceiveModal">
     <div class="modal-content">
         <h3>Terima Uang Utuh</h3>
@@ -377,16 +391,18 @@
     const db = firebase.database();
 
     let vaults = [
-        { id: 'b1', name: 'Brankas Gudang' },
-        { id: 'b2', name: 'Brankas Permen Tukar' },
-        { id: 'b3', name: 'Brankas Kamar' }
+        { id: 'b1', name: 'Brankas Gudang', pin: '1234', isUnlocked: false },
+        { id: 'b2', name: 'Brankas Permen Tukar', pin: '5678', isUnlocked: false },
+        { id: 'b3', name: 'Brankas Kamar', pin: '0000', isUnlocked: false }
     ];
+    let masterPin = '9999';
     let transactions = [];
     let deletionLogs = [];
     let storeClosings = [];
     let activeTabVaultId = 'b1';
     let selectedStoreFilter = null;
-    const storeNames = ['AWW Sambi', 'AWW Beji', 'AWW Bandung', 'AWW Trenggalek', 'AWW Ponorogo'];
+    let pendingPinCallback = null;
+    let storeNames = ['AWW Sambi', 'AWW Beji', 'AWW Bandung', 'AWW Trenggalek', 'AWW Ponorogo'];
 
     const standardDenominations = [
         { key: 'receh', label: 'Receh', emoji: '🪙', color: '#795548', bg: '#efebe9' },
@@ -433,11 +449,15 @@
         db.ref('vaults_data').on('value', snapshot => {
             const data = snapshot.val();
             if (data) {
+                if (data.vaults) {
+                    vaults.forEach(v => {
+                        let found = data.vaults.find(fv => fv.id === v.id);
+                        if (found) v.pin = found.pin;
+                    });
+                }
+                if (data.masterPin) masterPin = data.masterPin;
                 transactions = data.transactions || [];
                 deletionLogs = data.deletionLogs || [];
-            } else {
-                transactions = [];
-                deletionLogs = [];
             }
             renderAll();
         });
@@ -449,7 +469,12 @@
     }
 
     function syncToCloud() {
-        db.ref('vaults_data').set({ transactions, deletionLogs });
+        db.ref('vaults_data').set({
+            vaults: vaults.map(({id, name, pin}) => ({id, name, pin})),
+            masterPin,
+            transactions,
+            deletionLogs
+        });
     }
 
     function switchSlide(num) {
@@ -462,6 +487,44 @@
     function formatNumber(num) { return isNaN(num) ? '' : new Intl.NumberFormat('id-ID').format(num); }
     function parseCleanNumber(str) { return !str ? 0 : parseFloat(str.toString().replace(/\./g, '').replace(/,/g, '')) || 0; }
     function formatRp(num) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num); }
+
+    // Sستم Verifikasi PIN
+    function promptPin(title, info, callback) {
+        document.getElementById('pinModalTitle').innerText = title;
+        document.getElementById('pinModalInfo').innerText = info;
+        document.getElementById('pinInputVal').value = '';
+        pendingPinCallback = callback;
+        document.getElementById('pinModal.style')
+        document.getElementById('pinModal').style.display = 'flex';
+        setTimeout(() => document.getElementById('pinInputVal').focus(), 100);
+    }
+    function closePinModal() { document.getElementById('pinModal').style.display = 'none'; pendingPinCallback = null; }
+    function verifyPinAction() {
+        let val = document.getElementById('pinInputVal').value.trim();
+        if (pendingPinCallback && pendingPinCallback(val)) {
+            closePinModal();
+        } else {
+            alert('PIN Salah!');
+            document.getElementById('pinInputVal').value = '';
+        }
+    }
+
+    function toggleVaultUnlock(vaultId) {
+        let vault = vaults.find(v => v.id === vaultId);
+        if (vault.isUnlocked) {
+            vault.isUnlocked = false;
+            renderAll();
+        } else {
+            promptPin(`Buka Brankas: ${vault.name}`, 'Masukkan PIN brankas atau Master PIN:', (enteredPin) => {
+                if (enteredPin === vault.pin || enteredPin === masterPin) {
+                    vault.isUnlocked = true;
+                    renderAll();
+                    return true;
+                }
+                return false;
+            });
+        }
+    }
 
     function renderDenomInputTable() {
         const tbody = document.getElementById('denomInputTableBody');
@@ -492,6 +555,12 @@
     function saveTransaction(e) {
         e.preventDefault();
         const vaultId = document.getElementById('vaultSelect').value;
+        const vault = vaults.find(v => v.id === vaultId);
+        if (!vault.isUnlocked) {
+            alert('Brankas terkunci! Buka brankas dengan PIN terlebih dahulu.');
+            return;
+        }
+
         const type = document.getElementById('typeSelect').value;
         const amount = parseCleanNumber(document.getElementById('grandAmountInput').value);
         if (amount <= 0) { alert('Nominal harus > 0'); return; }
@@ -534,6 +603,8 @@
         if (vaultSelect) vaultSelect.innerHTML = '';
 
         let grandTotal = 0;
+        let allUnlocked = true;
+
         vaults.forEach(v => {
             let balance = 0;
             transactions.forEach(tx => {
@@ -547,8 +618,18 @@
                 }
             });
             grandTotal += balance;
+            if (!v.isUnlocked) allUnlocked = false;
+
             if (vaultContainer) {
-                vaultContainer.innerHTML += `<div class="vault-card"><h4>${v.name}</h4><div class="balance">${formatRp(balance)}</div></div>`;
+                let btnText = v.isUnlocked ? '🔒 Kunci Kembali' : '🔑 Masukkan PIN';
+                let btnClass = v.isUnlocked ? 'pin-btn unlocked' : 'pin-btn';
+                let balanceDisplay = v.isUnlocked ? formatRp(balance) : 'Rp ••••••••';
+                vaultContainer.innerHTML += `
+                    <div class="vault-card">
+                        <h4>${v.name}</h4>
+                        <div class="balance">${balanceDisplay}</div>
+                        <button class="${btnClass}" onclick="toggleVaultUnlock('${v.id}')">${btnText}</button>
+                    </div>`;
             }
             if (vaultSelect) vaultSelect.innerHTML += `<option value="${v.id}">${v.name}</option>`;
         });
@@ -556,7 +637,9 @@
         if (vaultSelect && currentSelected) vaultSelect.value = currentSelected;
         else if (vaultSelect && vaultSelect.options.length > 0 && !vaultSelect.value) vaultSelect.value = activeTabVaultId;
 
-        document.getElementById('grandTotalBalanceContainer').innerText = formatRp(grandTotal);
+        document.getElementById('grandTotalTitle').innerText = allUnlocked ? 'Total Saldo Keseluruhan (Terbuka Penuh)' : 'Total Saldo Keseluruhan (Terkunci Sebagian)';
+        document.getElementById('grandTotalBalanceContainer').innerText = allUnlocked ? formatRp(grandTotal) : 'Rp •••••••• (Buka Semua PIN)';
+        
         renderDenomInputTable();
         renderTabs();
         renderTransactions();
@@ -592,7 +675,10 @@
         const container = document.getElementById('denomSummaryContent');
         if (!container) return;
         const vault = vaults.find(v => v.id === activeTabVaultId);
-        if (!vault) return;
+        if (!vault || !vault.isUnlocked) {
+            container.innerHTML = `<p style="text-align:center; color:#c62828;">Brankas terkunci. Masukkan PIN brankas untuk melihat rincian.</p>`;
+            return;
+        }
 
         let activeDenoms = getActiveDenominations(vault.id);
         let gridHtml = `<div class="denom-summary-grid">`;
@@ -625,6 +711,10 @@
         document.getElementById('currentMonthLabel').innerText = cur;
         let html = `<table><thead><tr><th>Brankas</th><th>Total Masuk</th><th>Total Keluar</th><th>Selisih (Net)</th></tr></thead><tbody>`;
         vaults.forEach(v => {
+            if (!v.isUnlocked) {
+                html += `<tr><td>${v.name}</td><td colspan="3" style="color:#c62828; text-align:center;">Terkunci (Masukkan PIN)</td></tr>`;
+                return;
+            }
             let m = 0, k = 0;
             transactions.forEach(tx => {
                 if (tx.vaultId === v.id && tx.monthYear === cur) {
@@ -642,6 +732,14 @@
     function renderTransactions() {
         const container = document.getElementById('historyContent');
         if (!container) return;
+        if (activeTabVaultId !== 'all') {
+            let v = vaults.find(x => x.id === activeTabVaultId);
+            if (!v || !v.isUnlocked) {
+                container.innerHTML = `<p style="text-align:center; color:#c62828;">Brankas terkunci. Masukkan PIN untuk melihat riwayat transaksi.</p>`;
+                return;
+            }
+        }
+
         const getVerticalDetails = (details) => {
             if (!details || details.length === 0) return '-';
             let html = `<div class="vertical-details">`;
@@ -656,7 +754,16 @@
             let html = `<table><thead><tr><th>Aksi</th><th>Brankas</th><th>Waktu</th><th>Jenis</th><th>Keterangan</th><th>Total</th><th>Rincian</th></tr></thead><tbody>`;
             transactions.slice().reverse().forEach(tx => {
                 let vObj = vaults.find(v => v.id === tx.vaultId);
-                html += `<tr><td><button class="btn-edit" onclick="openEditTxModal(${tx.id})">✏️</button><button class="btn-trash" onclick="promptDeleteTransaction(${tx.id})">🗑️</button></td><td><b>${vObj ? vObj.name : ''}</b></td><td>${tx.date} ${tx.time}</td><td class="${tx.type}">${tx.type.toUpperCase()}</td><td>${tx.description}</td><td class="${tx.type}">${tx.type==='masuk'?'+':'-'}${formatRp(tx.amount)}</td><td>${getVerticalDetails(tx.details)}</td></tr>`;
+                let canView = vObj && vObj.isUnlocked;
+                html += `<tr>
+                    <td><button class="btn-edit" onclick="requestEditTx(${tx.id})">✏️</button><button class="btn-trash" onclick="requestDeleteTx(${tx.id})">🗑️</button></td>
+                    <td><b>${vObj ? vObj.name : ''}</b></td>
+                    <td>${tx.date} ${tx.time}</td>
+                    <td class="${tx.type}">${tx.type.toUpperCase()}</td>
+                    <td>${tx.description}</td>
+                    <td class="${tx.type}">${canView ? (tx.type==='masuk'?'+':'-')+formatRp(tx.amount) : 'Rp ••••••••'}</td>
+                    <td>${canView ? getVerticalDetails(tx.details) : 'Terkunci'}</td>
+                </tr>`;
             });
             html += `</tbody></table>`;
             container.innerHTML = html;
@@ -674,10 +781,48 @@
                     `<td><span style="color: #c62828; font-weight: bold; cursor: pointer;" onclick="openExchangeModal(${tx.id})">🔴 Belum</span></td>`;
             } else if (isB2) { statusTd = `<td>-</td>`; }
 
-            html += `<tr><td><button class="btn-edit" onclick="openEditTxModal(${tx.id})">✏️</button><button class="btn-trash" onclick="promptDeleteTransaction(${tx.id})">🗑️</button></td><td>${tx.date} ${tx.time}</td>${statusTd}<td class="${tx.type}">${tx.type.toUpperCase()}</td><td>${tx.description}</td><td class="${tx.type}">${tx.type==='masuk'?'+':'-'}${formatRp(tx.amount)}</td><td>${getVerticalDetails(tx.details)}</td></tr>`;
+            html += `<tr>
+                <td><button class="btn-edit" onclick="requestEditTx(${tx.id})">✏️</button><button class="btn-trash" onclick="requestDeleteTx(${tx.id})">🗑️</button></td>
+                <td>${tx.date} ${tx.time}</td>${statusTd}
+                <td class="${tx.type}">${tx.type.toUpperCase()}</td>
+                <td>${tx.description}</td>
+                <td class="${tx.type}">${tx.type==='masuk'?'+':'-'}${formatRp(tx.amount)}</td>
+                <td>${getVerticalDetails(tx.details)}</td>
+            </tr>`;
         });
         html += `</tbody></table>`;
         container.innerHTML = html;
+    }
+
+    // Proteksi PIN untuk Edit & Hapus Transaksi
+    function requestEditTx(txId) {
+        promptPin('Verifikasi Keamanan Edit', 'Masukkan Master PIN atau PIN Brankas terkait:', (pin) => {
+            let tx = transactions.find(t => t.id === txId);
+            let vault = vaults.find(v => v.id === tx.vaultId);
+            if (pin === masterPin || pin === vault.pin) {
+                openEditTxModal(txId);
+                return true;
+            }
+            return false;
+        });
+    }
+
+    function requestDeleteTx(txId) {
+        promptPin('Verifikasi Keamanan Hapus', 'Masukkan Master PIN untuk menghapus transaksi:', (pin) => {
+            if (pin === masterPin) {
+                let reason = prompt('Masukkan alasan penghapusan transaksi:');
+                if (reason) {
+                    let tx = transactions.find(t => t.id === txId);
+                    let now = new Date();
+                    deletionLogs.push({ ...tx, reason, deletedAt: `${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID')}` });
+                    transactions = transactions.filter(t => t.id !== txId);
+                    syncToCloud();
+                    alert('Transaksi berhasil dihapus dan tercatat di Audit Trail.');
+                }
+                return true;
+            }
+            return false;
+        });
     }
 
     function openExchangeModal(txId) {
@@ -738,18 +883,6 @@
         syncToCloud();
         document.getElementById('editTxModal').style.display = 'none';
         alert('Transaksi diperbarui!');
-    }
-
-    function promptDeleteTransaction(txId) {
-        let reason = prompt('Masukkan alasan penghapusan transaksi:');
-        if (!reason) return;
-        let tx = transactions.find(t => t.id === txId);
-        if (!tx) return;
-        let now = new Date();
-        deletionLogs.push({ ...tx, reason, deletedAt: `${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID')}` });
-        transactions = transactions.filter(t => t.id !== txId);
-        syncToCloud();
-        alert('Transaksi dihapus.');
     }
 
     function renderAuditTrail() {
@@ -833,7 +966,41 @@
             let checked = i.isCollected ? 'checked' : '';
             let status = i.isCollected ? `<span style="color: #2e7d32; font-size:0.8rem;"><b>Diambil</b> (${i.collectorName || 'Pusat'})</span>` : `<span style="color: #c62828; font-size:0.8rem;">Belum</span>`;
             let comp = i.computerOmset || ((i.debit || 0) + (i.qris || 0) + (i.physicalCash || 0));
-            tbody.innerHTML += `<tr><td><button class="btn-edit" onclick="openEditStoreModal(${i.id})">✏️</button><button class="btn-trash" onclick="promptDeleteStoreRecord(${i.id})">🗑️</button></td><td style="text-align:center;"><input type="checkbox" ${checked} onchange="handleCollectionCheckbox(event, ${i.id})" style="width:18px;height:18px;cursor:pointer;"><div>${status}</div></td><td>${i.date} ${i.time}</td><td><b>${i.storePoint}</b></td><td style="color:#0d47a1; font-weight:bold;">${formatRp(comp)}</td><td>${formatRp(i.parking||0)}</td><td>${formatRp(i.debit||0)}</td><td>${formatRp(i.qris||0)}</td><td>${formatRp(i.physicalCash||0)}</td><td style="color:#c62828;">${i.expenseDesc||'-'}</td></tr>`;
+            tbody.innerHTML += `<tr>
+                <td><button class="btn-edit" onclick="requestEditStore(${i.id})">✏️</button><button class="btn-trash" onclick="requestDeleteStore(${i.id})">🗑️</button></td>
+                <td style="text-align:center;"><input type="checkbox" ${checked} onchange="handleCollectionCheckbox(event, ${i.id})" style="width:18px;height:18px;cursor:pointer;"><div>${status}</div></td>
+                <td>${i.date} ${i.time}</td>
+                <td><b>${i.storePoint}</b></td>
+                <td style="color:#0d47a1; font-weight:bold;">${formatRp(comp)}</td>
+                <td>${formatRp(i.parking||0)}</td>
+                <td>${formatRp(i.debit||0)}</td>
+                <td>${formatRp(i.qris||0)}</td>
+                <td>${formatRp(i.physicalCash||0)}</td>
+                <td style="color:#c62828;">${i.expenseDesc||'-'}</td>
+            </tr>`;
+        });
+    }
+
+    // Proteksi PIN untuk Edit & Hapus Rekap Toko
+    function requestEditStore(id) {
+        promptPin('Verifikasi Keamanan Toko', 'Masukkan Master PIN untuk mengedit rekap toko:', (pin) => {
+            if (pin === masterPin) {
+                openEditStoreModal(id);
+                return true;
+            }
+            return false;
+        });
+    }
+
+    function requestDeleteStore(id) {
+        promptPin('Verifikasi Keamanan Toko', 'Masukkan Master PIN untuk menghapus rekap toko:', (pin) => {
+            if (pin === masterPin) {
+                storeClosings = storeClosings.filter(i => i.id !== id);
+                db.ref('store_closings').set(storeClosings);
+                alert('Rekap toko berhasil dihapus.');
+                return true;
+            }
+            return false;
         });
     }
 
@@ -906,12 +1073,6 @@
         document.getElementById('bulkCollectModal').style.display = 'none';
     }
 
-    function promptDeleteStoreRecord(id) {
-        if (confirm('Yakin ingin menghapus rekap toko ini?')) {
-            storeClosings = storeClosings.filter(i => i.id !== id);
-            db.ref('store_closings').set(storeClosings);
-        }
-    }
     function openEditStoreModal(id) {
         let item = storeClosings.find(i => i.id === id);
         if (!item) return;
