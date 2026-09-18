@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.18.0">
+    <meta name="app-version" content="9.19.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -117,23 +117,24 @@
 </head>
 <body>
 
-<!-- KARTU LOGIN PIN UTAMA -->
-<div class="card" id="loginCard" style="max-width: 400px; margin: 80px auto; text-align: center;">
-    <h3>🔒 Akses Brankas Permen AWW</h3>
-    <p style="font-size: 0.85rem; color: #666;">Masukkan PIN Akses untuk masuk ke sistem.</p>
-    <div class="form-group" style="text-align: left;">
-        <label>PIN Akses</label>
-        <input type="password" id="appPinInput" inputmode="numeric" maxlength="15" placeholder="Masukkan PIN...">
+<!-- KARTU LOGIN PIN UJI COBA (PIN: 123) -->
+<div id="loginScreenCard" style="max-width: 400px; margin: 100px auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); text-align: center;">
+    <h3 style="color: #1565c0; margin-bottom: 5px;">🔓 Uji Coba Akses AWW</h3>
+    <p style="font-size: 0.85rem; color: #666; margin-bottom: 20px;">Masukkan PIN Uji Coba: <b>123</b></p>
+    <div style="text-align: left; margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; color: #555;">PIN Akses</label>
+        <input type="password" id="testPinInput" inputmode="numeric" maxlength="10" placeholder="Ketik 123..." style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 1.1rem; text-align: center; letter-spacing: 3px;">
     </div>
-    <button type="button" id="loginBtn" class="btn-primary">Masuk (Buka Akses)</button>
+    <button type="button" onclick="doDirectLogin()" style="background: #2196F3; color: white; border: none; padding: 12px; width: 100%; border-radius: 4px; font-weight: bold; font-size: 1.1rem; cursor: pointer;">Masuk ke Aplikasi</button>
 </div>
 
+<!-- KONTEN UTAMA APLIKASI -->
 <div id="appMainContainer" style="display: none;">
 <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
         <div style="display: flex; align-items: center; gap: 10px;">
             <h2 style="margin: 0;">Pencatatan Keuangan Pusat AWW</h2>
-            <button class="btn-cancel" id="logoutBtn" style="width: auto; padding: 5px 10px; font-size: 0.8rem;">Kunci Aplikasi 🔒</button>
+            <button class="btn-cancel" onclick="doDirectLogout()" style="width: auto; padding: 5px 10px; font-size: 0.8rem;">Kunci Sesi 🔒</button>
         </div>
         <button class="btn-link-share" onclick="openLinkModal()">🔗 Bagikan Tautan Akses & QR</button>
     </div>
@@ -157,7 +158,7 @@
                 </div>
             </div>
             <div id="grandTotalUnlockSection" style="margin-top: 12px; display: flex; gap: 5px; max-width: 320px;">
-                <input type="password" id="grandTotalPinInput" inputmode="numeric" maxlength="15" placeholder="PIN Master" style="padding: 10px; font-size: 1rem; text-align: center; letter-spacing: 2px;" onkeydown="if(event.key==='Enter') unlockGrandTotal()">
+                <input type="password" id="grandTotalPinInput" inputmode="numeric" maxlength="10" placeholder="PIN Master" style="padding: 10px; font-size: 1rem; text-align: center; letter-spacing: 2px;" onkeydown="if(event.key==='Enter') unlockGrandTotal()">
                 <button class="btn-unlock" onclick="unlockGrandTotal()">Buka Total</button>
             </div>
         </div>
@@ -382,10 +383,10 @@
 <div class="modal" id="slide2AuthModal">
     <div class="modal-content">
         <h3>🔒 Akses Terbatas Slide 2</h3>
-        <p style="font-size: 0.85rem; color: #666;">Masukkan <b>PIN Brankas Permen Tukar</b> atau <b>PIN Master (Owner)</b> untuk membuka Rekap 5 Toko.</p>
+        <p style="font-size: 0.85rem; color: #666;">Masukkan PIN untuk membuka Rekap 5 Toko.</p>
         <div class="form-group">
             <label>PIN Akses</label>
-            <input type="password" id="slide2PinInput" inputmode="numeric" maxlength="15" placeholder="Masukkan PIN..." onkeydown="if(event.key==='Enter') verifySlide2Access()">
+            <input type="password" id="slide2PinInput" inputmode="numeric" maxlength="10" placeholder="PIN..." onkeydown="if(event.key==='Enter') verifySlide2Access()">
         </div>
         <div class="modal-buttons">
             <button class="btn-cancel" onclick="closeSlide2AuthModal()">Batal</button>
@@ -430,7 +431,7 @@
         <p style="font-size: 0.85rem; color: #666;" id="collectModalStoreLabel"></p>
         <input type="hidden" id="modalCollectId">
         <div class="form-group"><label>Tanggal Pengambilan</label><input type="date" id="singleCollectDateInput"></div>
-        <div class="form-group"><label>Nama Pengambil / Penyetor</label><input type="text" id="collectorNameInput" placeholder="Contoh: Bpk. Budi / Mas Joko" onkeydown="if(event.key==='Enter') confirmCollectCash()"></div>
+        <div class="form-group"><label>Nama Pengambil / Penyetor</label><input type="text" id="collectorNameInput" placeholder="Contoh: Bpk. Budi" onkeydown="if(event.key==='Enter') confirmCollectCash()"></div>
         <div class="modal-buttons">
             <button class="btn-cancel" onclick="closeCollectModal()">Batal</button>
             <button class="btn-submit" onclick="confirmCollectCash()">Simpan & Tandai Diambil</button>
@@ -441,8 +442,8 @@
 <div class="modal" id="bulkCollectModal">
     <div class="modal-content">
         <h3>Konfirmasi Ceklist Masal Per Toko</h3>
-        <p style="font-size: 0.85rem; color: #666;" id="bulkModalInfoText">Laporan pada toko terpilih dengan tanggal pengambilan masing-masing akan diperbarui.</p>
-        <div class="form-group"><label>Nama Pengambil / Penyetor (Berlaku untuk semua)</label><input type="text" id="bulkCollectorNameInput" placeholder="Contoh: Bpk. Budi / Mas Joko" onkeydown="if(event.key==='Enter') confirmBulkCollect()"></div>
+        <p style="font-size: 0.85rem; color: #666;" id="bulkModalInfoText">Laporan pada toko terpilih akan diperbarui.</p>
+        <div class="form-group"><label>Nama Pengambil / Penyetor</label><input type="text" id="bulkCollectorNameInput" placeholder="Contoh: Bpk. Budi" onkeydown="if(event.key==='Enter') confirmBulkCollect()"></div>
         <div class="modal-buttons">
             <button class="btn-cancel" onclick="closeBulkModal()">Batal</button>
             <button class="btn-submit" onclick="confirmBulkCollect()">Proses Ceklist Masal</button>
@@ -466,9 +467,9 @@
 
 <div class="modal" id="deleteStoreAuthModal">
     <div class="modal-content">
-        <h3>PIN Master Diperlukan</h3>
+        <h3>PIN Diperlukan</h3>
         <input type="hidden" id="modalDeleteStoreId">
-        <div class="form-group"><label>PIN Master</label><input type="password" id="storeAuthPinInput" inputmode="numeric" maxlength="15" placeholder="Masukkan PIN Master" onkeydown="if(event.key==='Enter') verifyAndDeleteStoreRecord()"></div>
+        <div class="form-group"><label>PIN Akses</label><input type="password" id="storeAuthPinInput" inputmode="numeric" maxlength="10" placeholder="Masukkan PIN" onkeydown="if(event.key==='Enter') verifyAndDeleteStoreRecord()"></div>
         <div class="modal-buttons">
             <button class="btn-cancel" onclick="closeDeleteStoreModal()">Batal</button>
             <button class="btn-submit" onclick="verifyAndDeleteStoreRecord()" style="background: #d32f2f;">Hapus Laporan</button>
@@ -480,7 +481,7 @@
     <div class="modal-content" style="width: 420px; text-align: left;">
         <h3 style="text-align: center;">Edit Riwayat Tutup Buku</h3>
         <input type="hidden" id="modalEditStoreId">
-        <div class="form-group"><label>PIN Master</label><input type="password" id="editStoreAuthPin" inputmode="numeric" maxlength="15" placeholder="PIN Master"></div>
+        <div class="form-group"><label>PIN Akses</label><input type="password" id="editStoreAuthPin" inputmode="numeric" maxlength="10" placeholder="PIN"></div>
         <div class="form-group"><label>Debit (Rp)</label><input type="text" id="editDebitInput" inputmode="numeric"></div>
         <div class="form-group"><label>QRIS (Rp)</label><input type="text" id="editQrisInput" inputmode="numeric"></div>
         <div class="form-group"><label>Permen Fisik (Rp)</label><input type="text" id="editPhysInput" inputmode="numeric"></div>
@@ -507,9 +508,9 @@
     <div class="modal-content">
         <h3>Ubah PIN Brankas</h3>
         <input type="hidden" id="modalVaultId">
-        <div class="form-group"><label>PIN Lama</label><input type="password" id="oldPinInput" inputmode="numeric" maxlength="15"></div>
-        <div class="form-group"><label>PIN Baru</label><input type="password" id="newPinInput" inputmode="numeric" maxlength="15"></div>
-        <div class="form-group"><label>Konfirmasi PIN Baru</label><input type="password" id="confirmPinInput" inputmode="numeric" maxlength="15"></div>
+        <div class="form-group"><label>PIN Lama</label><input type="password" id="oldPinInput" inputmode="numeric" maxlength="10"></div>
+        <div class="form-group"><label>PIN Baru</label><input type="password" id="newPinInput" inputmode="numeric" maxlength="10"></div>
+        <div class="form-group"><label>Konfirmasi PIN Baru</label><input type="password" id="confirmPinInput" inputmode="numeric" maxlength="10"></div>
         <div class="modal-buttons">
             <button class="btn-cancel" onclick="closePinModal()">Batal</button>
             <button class="btn-submit" onclick="submitNewPin()">Simpan</button>
@@ -520,9 +521,9 @@
 <div class="modal" id="grandTotalPinModal">
     <div class="modal-content">
         <h3>Ubah PIN Master Total</h3>
-        <div class="form-group"><label>PIN Master Lama</label><input type="password" id="oldMasterPinInput" inputmode="numeric" maxlength="15"></div>
-        <div class="form-group"><label>PIN Master Baru</label><input type="password" id="newMasterPinInput" inputmode="numeric" maxlength="15"></div>
-        <div class="form-group"><label>Konfirmasi PIN Master Baru</label><input type="password" id="confirmMasterPinInput" inputmode="numeric" maxlength="15"></div>
+        <div class="form-group"><label>PIN Master Lama</label><input type="password" id="oldMasterPinInput" inputmode="numeric" maxlength="10"></div>
+        <div class="form-group"><label>PIN Master Baru</label><input type="password" id="newMasterPinInput" inputmode="numeric" maxlength="10"></div>
+        <div class="form-group"><label>Konfirmasi PIN Master Baru</label><input type="password" id="confirmMasterPinInput" inputmode="numeric" maxlength="10"></div>
         <div class="modal-buttons">
             <button class="btn-cancel" onclick="closeGrandTotalPinModal()">Batal</button>
             <button class="btn-submit" onclick="submitNewMasterPin()">Simpan</button>
@@ -535,8 +536,8 @@
         <h3>Autentikasi & Alasan Penghapusan</h3>
         <input type="hidden" id="modalDeleteTxId">
         <div class="form-group">
-            <label id="deleteAuthLabel">PIN Brankas</label>
-            <input type="password" id="ownerAuthPinInput" inputmode="numeric" maxlength="15" placeholder="Masukkan PIN">
+            <label id="deleteAuthLabel">PIN Akses</label>
+            <input type="password" id="ownerAuthPinInput" inputmode="numeric" maxlength="10" placeholder="Masukkan PIN">
         </div>
         <div class="form-group"><label>Alasan Penghapusan</label><input type="text" id="deleteReasonInput" placeholder="Contoh: Salah input"></div>
         <div class="modal-buttons">
@@ -548,8 +549,8 @@
 
 <div class="modal" id="allVaultsAuthModal">
     <div class="modal-content">
-        <h3>Autentikasi PIN Master</h3>
-        <div class="form-group"><label>PIN Master</label><input type="password" id="allVaultsPinInput" inputmode="numeric" maxlength="15" placeholder="PIN Master"></div>
+        <h3>Autentikasi PIN</h3>
+        <div class="form-group"><label>PIN Akses</label><input type="password" id="allVaultsPinInput" inputmode="numeric" maxlength="10" placeholder="PIN"></div>
         <div class="modal-buttons">
             <button class="btn-cancel" onclick="closeAllVaultsAuthModal()">Batal</button>
             <button class="btn-submit" onclick="verifyAllVaultsAccess()">Buka</button>
@@ -572,71 +573,55 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const APP_LOGIN_PIN = "1971061289";
+    const TRIAL_PIN = "123";
 
-    document.addEventListener("DOMContentLoaded", () => {
-        const isAppUnlocked = sessionStorage.getItem("aww_app_unlocked") === "true";
-        if (isAppUnlocked) {
-            showAppMain();
+    window.onload = function() {
+        const status = localStorage.getItem("aww_unlocked_status");
+        if (status === "yes") {
+            openMainUI();
         } else {
-            showLoginCard();
+            openLoginUI();
         }
 
-        const loginBtn = document.getElementById('loginBtn');
-        if (loginBtn) {
-            loginBtn.addEventListener('click', verifyAppPin);
-        }
-
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', handleLogout);
-        }
-
-        const pinInput = document.getElementById('appPinInput');
-        if (pinInput) {
-            pinInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') verifyAppPin();
+        const inputEl = document.getElementById('testPinInput');
+        if (inputEl) {
+            inputEl.addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') doDirectLogin();
             });
         }
-    });
+    };
 
-    function verifyAppPin() {
-        const pinInputEl = document.getElementById('appPinInput');
-        if (!pinInputEl) return;
-        const enteredPin = pinInputEl.value.trim();
-        if (enteredPin === APP_LOGIN_PIN) {
-            sessionStorage.setItem("aww_app_unlocked", "true");
-            showAppMain();
+    function doDirectLogin() {
+        const val = document.getElementById('testPinInput').value.trim();
+        if (val === TRIAL_PIN) {
+            localStorage.setItem("aww_unlocked_status", "yes");
+            openMainUI();
         } else {
-            alert('PIN Akses Salah!');
-            pinInputEl.value = '';
-            pinInputEl.focus();
+            alert('PIN Salah! Gunakan PIN: 123');
+            document.getElementById('testPinInput').value = '';
+            document.getElementById('testPinInput').focus();
         }
     }
 
-    function showAppMain() {
-        const loginCard = document.getElementById('loginCard');
-        const mainContainer = document.getElementById('appMainContainer');
-        if (loginCard) loginCard.style.display = 'none';
-        if (mainContainer) mainContainer.style.display = 'block';
+    function openMainUI() {
+        document.getElementById('loginScreenCard').style.display = 'none';
+        document.getElementById('appMainContainer').style.display = 'block';
         renderAll();
         loadStoreClosings();
     }
 
-    function showLoginCard() {
-        const loginCard = document.getElementById('loginCard');
-        const mainContainer = document.getElementById('appMainContainer');
-        if (loginCard) loginCard.style.display = 'block';
-        if (mainContainer) mainContainer.style.display = 'none';
+    function openLoginUI() {
+        document.getElementById('loginScreenCard').style.display = 'block';
+        document.getElementById('appMainContainer').style.display = 'none';
         setTimeout(() => {
-            const input = document.getElementById('appPinInput');
-            if (input) input.focus();
+            const el = document.getElementById('testPinInput');
+            if (el) el.focus();
         }, 100);
     }
 
-    function handleLogout() {
-        sessionStorage.removeItem("aww_app_unlocked");
-        showLoginCard();
+    function doDirectLogout() {
+        localStorage.removeItem("aww_unlocked_status");
+        openLoginUI();
     }
 
     let isSlide2Authorized = false;
@@ -671,7 +656,7 @@
         let exchangeVault = vaults.find(v => v.id === 'b2');
         let exchangePin = exchangeVault ? exchangeVault.pin : '5678';
 
-        if (pin === exchangePin || pin === masterPin || pin === APP_LOGIN_PIN) {
+        if (pin === exchangePin || pin === masterPin || pin === TRIAL_PIN) {
             isSlide2Authorized = true;
             closeSlide2AuthModal();
             switchSlide(2);
@@ -736,7 +721,7 @@
         } else {
             syncToCloud();
         }
-        if (sessionStorage.getItem("aww_app_unlocked") === "true") renderAll();
+        if (localStorage.getItem("aww_unlocked_status") === "yes") renderAll();
     });
 
     function loadStoreClosings() {
@@ -985,7 +970,7 @@
         if (selectedStores.length === 0) { alert('Pilih minimal satu toko yang diambil!'); return; }
 
         document.getElementById('bulkCollectorNameInput').value = '';
-        document.getElementById('bulkModalInfoText').innerText = `Toko Pilihan: ${selectedStores.join(', ')} (Masing-masing dengan tanggal pengambilannya tersendiri)`;
+        document.getElementById('bulkModalInfoText').innerText = `Toko Pilihan: ${selectedStores.join(', ')}`;
         document.getElementById('bulkCollectModal').style.display = 'flex';
         document.getElementById('bulkCollectorNameInput').focus();
     }
@@ -1028,13 +1013,13 @@
         });
 
         if (updatedCount === 0) {
-            alert('Tidak ada data laporan uncollected yang cocok dengan toko terpilih.');
+            alert('Tidak ada data laporan uncollected yang cocok.');
             closeBulkModal();
             return;
         }
 
         db.ref('store_closings').set(storeClosings).then(() => {
-            alert(`Berhasil! Sebanyak ${updatedCount} laporan berhasil dicentang masal sesuai tanggal masing-masing toko.`);
+            alert(`Berhasil! Sebanyak ${updatedCount} laporan diperbarui.`);
             closeBulkModal();
             processAndRenderStoreData();
         }).catch(err => alert('Gagal menyimpan: ' + err.message));
@@ -1050,11 +1035,11 @@
     function verifyAndDeleteStoreRecord() {
         let pin = document.getElementById('storeAuthPinInput').value;
         let id = parseInt(document.getElementById('modalDeleteStoreId').value);
-        if (pin !== masterPin && pin !== APP_LOGIN_PIN) { alert('PIN Master salah!'); return; }
+        if (pin !== masterPin && pin !== TRIAL_PIN) { alert('PIN salah!'); return; }
         
         storeClosings = storeClosings.filter(item => item.id !== id);
         db.ref('store_closings').set(storeClosings).then(() => {
-            alert('Laporan tutup buku berhasil dihapus!');
+            alert('Laporan berhasil dihapus!');
             closeDeleteStoreModal();
             processAndRenderStoreData();
         }).catch(err => alert('Gagal menghapus: ' + err.message));
@@ -1075,7 +1060,7 @@
     function closeEditStoreModal() { document.getElementById('editStoreModal').style.display = 'none'; }
     function submitEditStoreRecord() {
         let pin = document.getElementById('editStoreAuthPin').value;
-        if (pin !== masterPin && pin !== APP_LOGIN_PIN) { alert('PIN Master salah!'); return; }
+        if (pin !== masterPin && pin !== TRIAL_PIN) { alert('PIN salah!'); return; }
         let id = parseInt(document.getElementById('modalEditStoreId').value);
         
         let debit = parseCleanNumber(document.getElementById('editDebitInput').value);
@@ -1101,7 +1086,7 @@
         });
 
         db.ref('store_closings').set(storeClosings).then(() => {
-            alert('Perubahan laporan berhasil disimpan!');
+            alert('Perubahan berhasil disimpan!');
             closeEditStoreModal();
             processAndRenderStoreData();
         }).catch(err => alert('Gagal menyimpan: ' + err.message));
@@ -1186,7 +1171,7 @@
     }
 
     function checkAndTriggerMasterUnlock(pinVal) {
-        if (pinVal === masterPin || pinVal === APP_LOGIN_PIN) {
+        if (pinVal === masterPin || pinVal === TRIAL_PIN) {
             isGrandTotalUnlocked = true;
             isAuditUnlocked = true;
             isAllVaultsUnlocked = true;
@@ -1202,7 +1187,7 @@
             isGrandTotalUnlocked = true;
             renderAll();
         } else {
-            alert('PIN Master salah!');
+            alert('PIN salah!');
             document.getElementById('grandTotalPinInput').value = '';
         }
     }
@@ -1212,7 +1197,7 @@
     function submitNewMasterPin() {
         const oldPin = document.getElementById('oldMasterPinInput').value;
         const newPin = document.getElementById('newMasterPinInput').value;
-        if (oldPin !== masterPin && oldPin !== APP_LOGIN_PIN) { alert('PIN Lama salah!'); return; }
+        if (oldPin !== masterPin && oldPin !== TRIAL_PIN) { alert('PIN Lama salah!'); return; }
         if (newPin.length < 3) { alert('Minimal 3 karakter!'); return; }
         masterPin = newPin;
         syncToCloud();
@@ -1239,7 +1224,7 @@
     function submitNewPin() {
         const vaultId = document.getElementById('modalVaultId').value;
         const vault = vaults.find(v => v.id === vaultId);
-        if (document.getElementById('oldPinInput').value !== vault.pin && document.getElementById('oldPinInput').value !== APP_LOGIN_PIN) { alert('PIN Lama salah!'); return; }
+        if (document.getElementById('oldPinInput').value !== vault.pin && document.getElementById('oldPinInput').value !== TRIAL_PIN) { alert('PIN Lama salah!'); return; }
         vault.pin = document.getElementById('newPinInput').value;
         syncToCloud();
         alert('PIN Berhasil diubah!');
@@ -1329,7 +1314,7 @@
                             <h4>${vault.name}</h4>
                             <div class="locked-view">🔒 Brankas Terkunci
                                 <div class="pin-input-group">
-                                    <input type="password" id="pin-${vault.id}" inputmode="numeric" maxlength="15" placeholder="PIN" onkeydown="if(event.key==='Enter') unlockVault('${vault.id}')">
+                                    <input type="password" id="pin-${vault.id}" inputmode="numeric" maxlength="10" placeholder="PIN" onkeydown="if(event.key==='Enter') unlockVault('${vault.id}')">
                                     <button class="btn-unlock" onclick="unlockVault('${vault.id}')">Buka</button>
                                 </div>
                             </div>
@@ -1733,8 +1718,8 @@
         let targetVault = vaults.find(v => v.id === txToDelete.vaultId);
         let validVaultPin = targetVault ? targetVault.pin : '';
 
-        if (pin !== validVaultPin && pin !== masterPin && pin !== APP_LOGIN_PIN) {
-            alert(`PIN Salah! Masukkan PIN yang benar.`);
+        if (pin !== validVaultPin && pin !== masterPin && pin !== TRIAL_PIN) {
+            alert(`PIN Salah!`);
             return;
         }
 
@@ -1749,21 +1734,21 @@
 
     function verifyAllVaultsAccess() {
         let pin = document.getElementById('allVaultsPinInput').value;
-        if (pin === masterPin || pin === APP_LOGIN_PIN) {
+        if (pin === masterPin || pin === TRIAL_PIN) {
             isAllVaultsUnlocked = true;
             activeTabVaultId = 'all';
             document.getElementById('allVaultsAuthModal').style.display = 'none';
             document.getElementById('allVaultsPinInput').value = '';
             renderAll();
         } else {
-            alert('PIN Master salah!');
+            alert('PIN salah!');
             document.getElementById('allVaultsPinInput').value = '';
         }
     }
     function closeAllVaultsAuthModal() { document.getElementById('allVaultsAuthModal').style.display = 'none'; document.getElementById('allVaultsPinInput').value = ''; }
 
     function renderAll() {
-        if (sessionStorage.getItem("aww_app_unlocked") !== "true") return;
+        if (localStorage.getItem("aww_unlocked_status") !== "yes") return;
         renderVaults();
         renderTabs();
         renderDenomSummary();
