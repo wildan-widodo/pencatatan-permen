@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.40.0">
+    <meta name="app-version" content="9.46.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -129,7 +129,7 @@
 
     <div class="main-nav">
         <button class="main-nav-btn active" id="navSlide1" onclick="switchSlide(1)">📁 Slide 1: Brankas Permen</button>
-        <button class="main-nav-btn" id="navSlide2" onclick="switchSlide(2)">🏪 Slide 2: Rekap 5 Toko AWW</button>
+        <button class="main-nav-btn" id="navSlide2" onclick="requestSlide2()">🏪 Slide 2: Rekap 5 Toko AWW</button>
     </div>
 
     <!-- SLIDE 1: PENCATATAN BRANKAS -->
@@ -293,12 +293,28 @@
 <!-- MODAL PIN & VERIFIKASI -->
 <div class="modal" id="pinModal">
     <div class="modal-content" style="width: 320px;">
-        <h3 id="pinModalTitle">Masukkan PIN Brankas</h3>
+        <h3 id="pinModalTitle">Masukkan PIN</h3>
         <p style="font-size: 0.85rem; color: #666;" id="pinModalInfo"></p>
-        <input type="password" id="pinInputVal" placeholder="Masukkan 4 digit PIN" maxlength="6" style="text-align: center; letter-spacing: 5px; font-size: 1.3rem; margin-bottom: 15px;">
+        <input type="password" id="pinInputVal" placeholder="••••" maxlength="6" style="text-align: center; letter-spacing: 5px; font-size: 1.3rem; margin-bottom: 15px;" onkeydown="if(event.key==='Enter'){ verifyPinAction(); }">
         <div class="modal-buttons">
             <button class="btn-cancel" onclick="closePinModal()">Batal</button>
-            <button class="btn-submit" onclick="verifyPinAction()">Buka</button>
+            <button class="btn-submit" onclick="verifyPinAction()">Konfirmasi</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ALASAN HAPUS -->
+<div class="modal" id="deleteReasonModal">
+    <div class="modal-content" style="width: 360px;">
+        <h3>Alasan Penghapusan</h3>
+        <p style="font-size: 0.85rem; color: #666;">Masukkan alasan mengapa riwayat transaksi ini dihapus:</p>
+        <input type="hidden" id="modalDeleteTxId">
+        <div class="form-group">
+            <input type="text" id="deleteReasonInput" placeholder="Contoh: Salah nominal / Dobel input" style="font-size: 1rem;">
+        </div>
+        <div class="modal-buttons">
+            <button class="btn-cancel" onclick="document.getElementById('deleteReasonModal').style.display='none'">Batal</button>
+            <button class="btn-submit" onclick="confirmDeleteTransaction()" style="background:#c62828;">Hapus Permanen</button>
         </div>
     </div>
 </div>
@@ -452,7 +468,7 @@
                 if (data.vaults) {
                     vaults.forEach(v => {
                         let found = data.vaults.find(fv => fv.id === v.id);
-                        if (found) v.pin = found.pin;
+                        if (found && found.pin) v.pin = found.pin;
                     });
                 }
                 if (data.masterPin) masterPin = data.masterPin;
@@ -484,17 +500,28 @@
         document.getElementById('navSlide2').className = num === 2 ? 'main-nav-btn active' : 'main-nav-btn';
     }
 
+    function requestSlide2() {
+        let exchangeVault = vaults.find(v => v.id === 'b2');
+        let exchangePin = exchangeVault ? exchangeVault.pin : '5678';
+
+        promptPin('Verifikasi Akses Slide 2', 'Masukkan PIN Brankas Permen Tukar atau Master PIN:', (pin) => {
+            if (pin === masterPin || pin === exchangePin) {
+                switchSlide(2);
+                return true;
+            }
+            return false;
+        });
+    }
+
     function formatNumber(num) { return isNaN(num) ? '' : new Intl.NumberFormat('id-ID').format(num); }
     function parseCleanNumber(str) { return !str ? 0 : parseFloat(str.toString().replace(/\./g, '').replace(/,/g, '')) || 0; }
     function formatRp(num) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num); }
 
-    // Sستم Verifikasi PIN
     function promptPin(title, info, callback) {
         document.getElementById('pinModalTitle').innerText = title;
         document.getElementById('pinModalInfo').innerText = info;
         document.getElementById('pinInputVal').value = '';
         pendingPinCallback = callback;
-        document.getElementById('pinModal.style')
         document.getElementById('pinModal').style.display = 'flex';
         setTimeout(() => document.getElementById('pinInputVal').focus(), 100);
     }
@@ -794,7 +821,6 @@
         container.innerHTML = html;
     }
 
-    // Proteksi PIN untuk Edit & Hapus Transaksi
     function requestEditTx(txId) {
         promptPin('Verifikasi Keamanan Edit', 'Masukkan Master PIN atau PIN Brankas terkait:', (pin) => {
             let tx = transactions.find(t => t.id === txId);
@@ -810,19 +836,30 @@
     function requestDeleteTx(txId) {
         promptPin('Verifikasi Keamanan Hapus', 'Masukkan Master PIN untuk menghapus transaksi:', (pin) => {
             if (pin === masterPin) {
-                let reason = prompt('Masukkan alasan penghapusan transaksi:');
-                if (reason) {
-                    let tx = transactions.find(t => t.id === txId);
-                    let now = new Date();
-                    deletionLogs.push({ ...tx, reason, deletedAt: `${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID')}` });
-                    transactions = transactions.filter(t => t.id !== txId);
-                    syncToCloud();
-                    alert('Transaksi berhasil dihapus dan tercatat di Audit Trail.');
-                }
+                document.getElementById('modalDeleteTxId').value = txId;
+                document.getElementById('deleteReasonInput').value = '';
+                document.getElementById('deleteReasonModal').style.display = 'flex';
+                setTimeout(() => document.getElementById('deleteReasonInput').focus(), 100);
                 return true;
             }
             return false;
         });
+    }
+
+    function confirmDeleteTransaction() {
+        let txId = parseInt(document.getElementById('modalDeleteTxId').value);
+        let reason = document.getElementById('deleteReasonInput').value.trim();
+        if (!reason) { alert('Alasan penghapusan wajib diisi!'); return; }
+
+        let tx = transactions.find(t => t.id === txId);
+        if (tx) {
+            let now = new Date();
+            deletionLogs.push({ ...tx, reason, deletedAt: `${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID')}` });
+            transactions = transactions.filter(t => t.id !== txId);
+            syncToCloud();
+            document.getElementById('deleteReasonModal').style.display = 'none';
+            alert('Transaksi berhasil dihapus dan dicatat di Audit Trail.');
+        }
     }
 
     function openExchangeModal(txId) {
@@ -981,7 +1018,6 @@
         });
     }
 
-    // Proteksi PIN untuk Edit & Hapus Rekap Toko
     function requestEditStore(id) {
         promptPin('Verifikasi Keamanan Toko', 'Masukkan Master PIN untuk mengedit rekap toko:', (pin) => {
             if (pin === masterPin) {
