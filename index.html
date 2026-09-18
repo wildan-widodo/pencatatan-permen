@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.26.0">
+    <meta name="app-version" content="9.27.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -460,9 +460,11 @@
     const storeNames = ['AWW Sambi', 'AWW Beji', 'AWW Bandung', 'AWW Trenggalek', 'AWW Ponorogo'];
 
     document.addEventListener("DOMContentLoaded", () => {
+        // Render instan terlebih dahulu menggunakan data default lokal
         renderAll();
         loadStoreClosings();
 
+        // Tarik data secara realtime dari Firebase
         db.ref('vaults_data').on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
@@ -472,6 +474,8 @@
             }
             vaults.forEach(v => v.isUnlocked = true);
             renderAll();
+        }, (error) => {
+            console.error("Gagal memuat database:", error);
         });
     });
 
@@ -487,6 +491,8 @@
             const data = snapshot.val();
             storeClosings = data ? data : [];
             processAndRenderStoreData();
+        }, (error) => {
+            console.error("Gagal memuat rekap toko:", error);
         });
     }
 
@@ -982,8 +988,10 @@
 
     function renderMonthlySummary() {
         const curMonth = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date());
-        document.getElementById('currentMonthLabel').innerText = curMonth;
+        const monthLabelElem = document.getElementById('currentMonthLabel');
+        if (monthLabelElem) monthLabelElem.innerText = curMonth;
         const contentArea = document.getElementById('summaryContentArea');
+        if (!contentArea) return;
 
         let html = `<table><thead><tr><th>Brankas</th><th>Total Masuk</th><th>Total Keluar</th><th>Selisih (Net)</th></tr></thead><tbody>`;
         vaults.forEach(v => {
@@ -1028,13 +1036,13 @@
         }
 
         let vault = vaults.find(v => v.id === activeTabVaultId);
-        let isB2 = (vault.id === 'b2');
+        let isB2 = (vault && vault.id === 'b2');
         let headersHtml = `<th>Aksi</th><th>Tanggal & Waktu</th>`;
         if (isB2) headersHtml += `<th>Status Terima</th>`;
         headersHtml += `<th>Jenis</th><th>Keterangan</th><th>Total</th><th>Rincian Pecahan</th>`;
 
         let html = `<table><thead><tr>${headersHtml}</tr></thead><tbody>`;
-        let filtered = transactions.filter(tx => tx.vaultId === vault.id);
+        let filtered = transactions.filter(tx => tx.vaultId === activeTabVaultId);
         filtered.slice().reverse().forEach(tx => {
             let statusBadgeTd = ``;
             if (isB2 && tx.type === 'keluar') {
