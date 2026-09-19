@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.55.0">
+    <meta name="app-version" content="9.56.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -52,8 +52,8 @@
         .store-stat-item label { color: #666; display: block; font-size: 0.7rem; }
         .store-stat-item span { font-weight: bold; color: #333; }
 
-        .grand-store-summary { background: #e3f2fd; border: 2px dashed #1565c0; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; text-align: center; }
-        .grand-store-summary div div { font-size: 1.1rem; font-weight: bold; color: #0d47a1; margin-top: 4px; }
+        .grand-store-summary { background: #e3f2fd; border: 2px dashed #1565c0; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; text-align: center; }
+        .grand-store-summary div div { font-size: 1.2rem; font-weight: bold; color: #0d47a1; margin-top: 4px; }
 
         .tab-container { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #ddd; padding-bottom: 10px; flex-wrap: wrap; }
         .tab-btn { background: #e0e0e0; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; color: #555; font-size: 0.9rem; }
@@ -253,11 +253,9 @@
                 <button type="button" class="btn-bulk" onclick="openBulkCollectModal()">Proses Ceklist Masal Terpilih</button>
             </div>
 
-            <!-- KOTAK RINGKASAN GRAND TOTAL (DITAMBAHKAN QRIS & DEBIT) -->
+            <!-- KOTAK RINGKASAN ATAS (TANPA TOTAL DEBIT & QRIS SESUAI PERMINTAAN) -->
             <div class="grand-store-summary">
                 <div><span>TOTAL OMSET</span><div id="grandTotalStoreComputer">Rp 0</div></div>
-                <div><span>TOTAL DEBIT</span><div id="grandTotalStoreDebit" style="color: #00838f;">Rp 0</div></div>
-                <div><span>TOTAL QRIS</span><div id="grandTotalStoreQris" style="color: #6a1b9a;">Rp 0</div></div>
                 <div><span>TOTAL PARKIR</span><div id="grandTotalStoreParking" style="color: #2e7d32;">Rp 0</div></div>
                 <div style="background: #fffde7; padding: 5px; border-radius: 6px; border: 1px dashed #fbc02d;"><span style="color: #b71c1c; font-size:0.75rem;">FISIK BELUM DIAMBIL</span><div id="grandTotalUncollectedCash" style="color: #c62828;">Rp 0</div></div>
                 <div style="background: #e8f5e9; padding: 5px; border-radius: 6px; border: 1px dashed #81c784;"><span style="color: #2e7d32; font-size:0.75rem;">PARKIR BELUM DIAMBIL</span><div id="grandTotalUncollectedParking" style="color: #2e7d32;">Rp 0</div></div>
@@ -1018,7 +1016,7 @@
             return (m === 'all' || parts[1] === m) && (y === 'all' || parts[2] === y);
         });
 
-        let grandComp = 0, grandDebit = 0, grandQris = 0, grandPark = 0, uncolCash = 0, uncolPark = 0;
+        let grandComp = 0, grandPark = 0, uncolCash = 0, uncolPark = 0;
         storeNames.forEach(store => {
             let tComp = 0, tDebit = 0, tQris = 0, tPhys = 0, tPark = 0, cnt = 0;
             filteredLogs.forEach(i => {
@@ -1028,14 +1026,12 @@
                     if (!i.isCollected) { uncolCash += (i.physicalCash || 0); uncolPark += (i.parking || 0); }
                 }
             });
-            grandComp += tComp; grandDebit += tDebit; grandQris += tQris; grandPark += tPark;
+            grandComp += tComp; grandPark += tPark;
             let activeClass = selectedStoreFilter === store ? 'active-filter' : '';
             container.innerHTML += `<div class="store-column-card ${activeClass}" onclick="filterStoreHistory('${store}')"><h4>${store}</h4><div class="store-stat-item"><label>Omset Komputer:</label><span>${formatRp(tComp)}</span></div><div class="store-stat-item"><label>Debit:</label><span>${formatRp(tDebit)}</span></div><div class="store-stat-item"><label>QRIS:</label><span>${formatRp(tQris)}</span></div><div class="store-stat-item"><label>Fisik:</label><span>${formatRp(tPhys)}</span></div><div class="store-stat-item"><label>Parkir:</label><span>${formatRp(tPark)}</span></div><div class="store-stat-item" style="border-top:1px dashed #ddd; margin-top:5px; padding-top:3px;"><span style="color:#1565c0;">${cnt} Laporan</span></div></div>`;
         });
 
         document.getElementById('grandTotalStoreComputer').innerText = formatRp(grandComp);
-        document.getElementById('grandTotalStoreDebit').innerText = formatRp(grandDebit);
-        document.getElementById('grandTotalStoreQris').innerText = formatRp(grandQris);
         document.getElementById('grandTotalStoreParking').innerText = formatRp(grandPark);
         document.getElementById('grandTotalUncollectedCash').innerText = formatRp(uncolCash);
         document.getElementById('grandTotalUncollectedParking').innerText = formatRp(uncolPark);
