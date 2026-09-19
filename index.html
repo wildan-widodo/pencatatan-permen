@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.54.0">
+    <meta name="app-version" content="9.54.1">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -422,7 +422,7 @@
     let deletionLogs = [];
     let storeClosings = [];
     let activeTabVaultId = 'b1';
-    let isAuditTrailUnlocked = false; // Status keamanan khusus untuk Audit Trail
+    let isAuditTrailUnlocked = false;
     let selectedStoreFilter = null;
     let pendingPinCallback = null;
     let storeNames = ['AWW Sambi', 'AWW Beji', 'AWW Bandung', 'AWW Trenggalek', 'AWW Ponorogo'];
@@ -504,7 +504,7 @@
         promptPin('Buka Semua Akses', 'Masukkan Master PIN untuk membuka seluruh brankas dan Audit Trail sekaligus:', (pin) => {
             if (pin === masterPin) {
                 vaults.forEach(v => v.isUnlocked = true);
-                isAuditTrailUnlocked = true; // Audit trail ikut terbuka otomatis jika Master PIN dimasukkan
+                isAuditTrailUnlocked = true;
                 renderAll();
                 return true;
             }
@@ -570,14 +570,12 @@
         let vault = vaults.find(v => v.id === vaultId);
         if (vault.isUnlocked) {
             vault.isUnlocked = false;
-            // Jika semua brankas dikunci kembali, audit trail juga dikunci kembali demi keamanan
             if (!vaults.some(v => v.isUnlocked)) isAuditTrailUnlocked = false;
             renderAll();
         } else {
             promptPin(`Buka Brankas: ${vault.name}`, 'Masukkan PIN brankas atau Master PIN:', (enteredPin) => {
                 if (enteredPin === vault.pin || enteredPin === masterPin) {
                     vault.isUnlocked = true;
-                    // Jika yang dimasukkan adalah Master PIN, otomatis buka semua brankas dan audit trail
                     if (enteredPin === masterPin) {
                         vaults.forEach(v => v.isUnlocked = true);
                         isAuditTrailUnlocked = true;
@@ -797,9 +795,7 @@
         const container = document.getElementById('historyContent');
         if (!container) return;
         
-        // Cek keamanan tab "Semua Brankas" atau tab individual
         if (activeTabVaultId === 'all') {
-            // Jika tab "Semua Brankas", pastikan minimal salah satu brankas terbuka atau user bisa melihatnya jika semua terbuka
             let anyUnlocked = vaults.some(v => v.isUnlocked);
             if (!anyUnlocked) {
                 container.innerHTML = `<p style="text-align:center; color:#c62828;">Riwayat semua brankas dikunci. Buka setidaknya satu brankas atau gunakan Master PIN untuk melihat riwayat keseluruhan.</p>`;
@@ -828,7 +824,7 @@
             transactions.slice().reverse().forEach(tx => {
                 let vObj = vaults.find(v => v.id === tx.vaultId);
                 let canView = vObj && vObj.isUnlocked;
-                if (!canView) return; // Sembunyikan transaksi dari brankas yang masih terkunci
+                if (!canView) return;
                 html += `<tr>
                     <td><button class="btn-edit" onclick="requestEditTx(${tx.id})">✏️</button><button class="btn-trash" onclick="requestDeleteTx(${tx.id})">🗑️</button></td>
                     <td><b>${vObj ? vObj.name : ''}</b></td>
@@ -1207,7 +1203,7 @@
         document.getElementById('linkModal').style.display = 'flex';
         const url = window.location.href;
         document.getElementById('appUrlInput').value = url;
-        document.getElementById('qrcodeContainer').innerHTML = **`clear`**; // placeholder reset
+        document.getElementById('qrcodeContainer').innerHTML = '';
         new QRCode(document.getElementById('qrcodeContainer'), { text: url, width: 140, height: 140 });
     }
 
