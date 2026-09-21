@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.58.0">
+    <meta name="app-version" content="9.59.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -94,7 +94,7 @@
         th { background: #f8f9fa; }
         .masuk { color: #2e7d32; font-weight: bold; }
         .keluar { color: #c62828; font-weight: bold; }
-        .vertical-details { font-size: 0.8rem; line-height: 1.4; }
+        .vertical-details { font-size: 0.8rem; line-height: 1.4; white-space: normal; min-width: 220px; }
     </style>
 </head>
 <body>
@@ -1083,13 +1083,14 @@
             
             let comp = i.computerOmset || ((i.debit || 0) + (i.qris || 0) + (i.physicalCash || 0));
             
-            // Format Pengeluaran Toko secara vertikal/multiline
+            // Format Pengeluaran Toko secara vertikal/multiline (Mendukung pemisah koma maupun garis tegak |)
             let expenseFormatted = '-';
             if (i.expenseDesc && i.expenseDesc !== '-') {
-                let expenses = i.expenseDesc.split(',').map(e => e.trim());
+                let rawText = i.expenseDesc;
+                let expenses = rawText.includes('|') ? rawText.split('|').map(e => e.trim()) : rawText.split(',').map(e => e.trim());
                 expenseFormatted = `<div class="vertical-details">`;
                 expenses.forEach(exp => {
-                    expenseFormatted += `<div>• ${exp}</div>`;
+                    if (exp) expenseFormatted += `<div>• ${exp}</div>`;
                 });
                 expenseFormatted += `</div>`;
             }
