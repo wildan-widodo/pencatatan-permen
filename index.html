@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.57.0">
+    <meta name="app-version" content="9.58.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -94,7 +94,7 @@
         th { background: #f8f9fa; }
         .masuk { color: #2e7d32; font-weight: bold; }
         .keluar { color: #c62828; font-weight: bold; }
-        .vertical-details { font-size: 0.8rem; line-height: 1.3; }
+        .vertical-details { font-size: 0.8rem; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -1051,6 +1051,18 @@
         tbody.innerHTML = '';
 
         let displayed = selectedStoreFilter ? filteredLogs.filter(i => i.storePoint === selectedStoreFilter) : filteredLogs;
+        
+        // Urutkan dari tanggal terbaru ke yang lama (Descending)
+        displayed.sort((a, b) => {
+            let parseDt = (item) => {
+                let dParts = (item.date || '').split('/');
+                let tParts = (item.time || '00:00:00').split(':');
+                if (dParts.length < 3) return 0;
+                return new Date(dParts[2], dParts[1] - 1, dParts[0], tParts[0] || 0, tParts[1] || 0, tParts[2] || 0).getTime();
+            };
+            return parseDt(b) - parseDt(a);
+        });
+
         if (selectedStoreFilter) {
             titleElem.innerText = `📋 Riwayat Tutup Buku: ${selectedStoreFilter}`;
             resetBtn.style.display = 'inline-block';
@@ -1064,14 +1076,14 @@
             return;
         }
 
-        displayed.slice().reverse().forEach(i => {
+        displayed.forEach(i => {
             let checked = i.isCollected ? 'checked' : '';
             let status = i.isCollected ? `<span style="color: #2e7d32; font-size:0.8rem;"><b>Diambil</b> (${i.collectorName || 'Pusat'})</span>` : `<span style="color: #c62828; font-size:0.8rem;">Belum</span>`;
             let collectionInfo = i.isCollected ? `<div style="font-size:0.8rem; color:#2e7d32; font-weight:bold;">${i.collectionDate || '-'}</div>` : `<div style="font-size:0.8rem; color:#c62828;">Belum Diambil</div>`;
             
             let comp = i.computerOmset || ((i.debit || 0) + (i.qris || 0) + (i.physicalCash || 0));
             
-            // Format Pengeluaran Toko secara vertikal/multiline jika ada beberapa baris atau koma
+            // Format Pengeluaran Toko secara vertikal/multiline
             let expenseFormatted = '-';
             if (i.expenseDesc && i.expenseDesc !== '-') {
                 let expenses = i.expenseDesc.split(',').map(e => e.trim());
