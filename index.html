@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.60.0">
+    <meta name="app-version" content="9.61.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -37,12 +37,6 @@
         .filter-bar { background: #f1f3f5; padding: 12px; border-radius: 6px; margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         .filter-bar select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.95rem; width: auto; flex: 1; }
 
-        .bulk-action-bar { background: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 6px; margin-bottom: 15px; }
-        .store-checkbox-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 10px 0; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #dcdcdc; }
-        .store-checkbox-item { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; cursor: pointer; font-weight: bold; color: #333; }
-        .store-checkbox-item input { width: 18px; height: 18px; cursor: pointer; }
-        .btn-bulk { background: #2e7d32; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 1rem; width: 100%; margin-top: 10px; }
-        
         .store-columns-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
         .store-column-card { background: #f8f9fa; border: 1px solid #dcdcdc; border-top: 4px solid #00796b; padding: 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
         .store-column-card:hover { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); background: #f1f8f6; }
@@ -177,6 +171,10 @@
                     </div>
                 </div>
                 <div class="form-group">
+                    <label>Tanggal Transaksi (Opsional: Kosongkan untuk otomatis)</label>
+                    <input type="datetime-local" id="transDateInput">
+                </div>
+                <div class="form-group">
                     <label>Isi Berdasarkan Pecahan / Kategori Nominal Langsung</label>
                     <div class="table-responsive">
                         <table class="denom-input-table">
@@ -227,33 +225,46 @@
         </div>
     </div>
 
-    <!-- SLIDE 2: REKAP 5 TITIK TOKO AWW & REKAPITULASI BULANAN -->
+    <!-- SLIDE 2: REKAPITULASI BULANAN KAS & REKAP 5 TITIK TOKO AWW -->
     <div class="slide-section" id="slide2">
-        <!-- BAGIAN 1: REKAP 5 TOKO -->
-        <div class="card">
-            <h3 style="margin-bottom: 15px;">🏪 Ringkasan Omset, Permen Fisik & Parkir 5 Titik Toko AWW</h3>
-            <div class="bulk-action-bar">
-                <div style="font-weight: bold; color: #2e7d32; margin-bottom: 8px; font-size: 0.95rem;">⚡ Form Ceklist Masal & Tanggal Pengambilan Per Toko</div>
-                <div style="margin-bottom: 10px;">
-                    <label style="font-size: 0.75rem; color: #555; margin-bottom: 3px;">Pilih Toko Yang Ingin Diambil:</label>
-                    <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 5px;">
-                        <button type="button" class="btn-cancel" style="width: auto; padding: 4px 8px; font-size: 0.75rem;" onclick="toggleAllStores(true)">Pilih Semua</button>
-                        <button type="button" class="btn-cancel" style="width: auto; padding: 4px 8px; font-size: 0.75rem;" onclick="toggleAllStores(false)">Batalkan Semua</button>
-                    </div>
-                    <div class="store-checkbox-grid">
-                        <label class="store-checkbox-item"><input type="checkbox" class="bulk-store-cb" value="AWW Sambi" onchange="toggleStoreDateInput('AWW Sambi')"> AWW Sambi</label>
-                        <label class="store-checkbox-item"><input type="checkbox" class="bulk-store-cb" value="AWW Beji" onchange="toggleStoreDateInput('AWW Beji')"> AWW Beji</label>
-                        <label class="store-checkbox-item"><input type="checkbox" class="bulk-store-cb" value="AWW Bandung" onchange="toggleStoreDateInput('AWW Bandung')"> AWW Bandung</label>
-                        <label class="store-checkbox-item"><input type="checkbox" class="bulk-store-cb" value="AWW Trenggalek" onchange="toggleStoreDateInput('AWW Trenggalek')"> AWW Trenggalek</label>
-                        <label class="store-checkbox-item"><input type="checkbox" class="bulk-store-cb" value="AWW Ponorogo" onchange="toggleStoreDateInput('AWW Ponorogo')"> AWW Ponorogo</label>
-                    </div>
+        <!-- BAGIAN 1: REKAPITULASI ARUS KAS BULANAN (PINDAH KE ATAS) -->
+        <div class="card" style="border-top: 4px solid #673ab7; margin-bottom: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin: 0; color: #673ab7;">📊 Rekapitulasi Arus Kas Bulanan (Pemasukan Toko & Operasional)</h3>
+                <div style="display: flex; gap: 10px;">
+                    <select id="recapMonthSelect" onchange="renderMonthlyRecap()" style="padding: 6px; font-size: 0.9rem;">
+                        <option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option>
+                        <option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option>
+                        <option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option>
+                        <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+                    </select>
+                    <select id="recapYearSelect" onchange="renderMonthlyRecap()" style="padding: 6px; font-size: 0.9rem;">
+                        <option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
+                    </select>
                 </div>
-                <div style="margin-bottom: 10px;" id="storeSpecificDatesContainer">
-                    <div style="font-size: 0.85rem; color: #777;">Centang salah satu toko di atas untuk mengatur tanggal pengambilannya.</div>
-                </div>
-                <button type="button" class="btn-bulk" onclick="openBulkCollectModal()">Proses Ceklist Masal Terpilih</button>
             </div>
 
+            <div class="grand-store-summary" style="margin-bottom: 20px;">
+                <div><span>TOTAL PEMASUKAN TOKO</span><div id="recapStoreIncome">Rp 0</div></div>
+                <div><span>TOTAL PENGELUARAN OP.</span><div id="recapOpExpense" style="color: #c62828;">Rp 0</div></div>
+                <div style="background: #fff; padding: 5px; border-radius: 6px; border: 1px dashed #1565c0;"><span style="color: #1565c0; font-size:0.75rem;">SELISIH BERSIH (NET)</span><div id="recapNetBalance" style="color: #1565c0;">Rp 0</div></div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">
+                    <h4 style="margin-top: 0; color: #2e7d32; border-bottom: 2px solid #c8e6c9; padding-bottom: 5px;">🟢 Rincian Pemasukan Toko (Bulan Ini)</h4>
+                    <div id="storeIncomeDetailBox" style="font-size: 0.9rem; line-height: 1.6;">Memuat data...</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">
+                    <h4 style="margin-top: 0; color: #c62828; border-bottom: 2px solid #ffcdd2; padding-bottom: 5px;">🔴 Rincian Pengeluaran Operasional (Bulan Ini)</h4>
+                    <div id="opExpenseDetailBox" style="font-size: 0.9rem; line-height: 1.6;">Memuat data...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BAGIAN 2: REKAP 5 TOKO -->
+        <div class="card">
+            <h3 style="margin-bottom: 15px;">🏪 Ringkasan Omset, Permen Fisik & Parkir 5 Titik Toko AWW</h3>
             <div class="grand-store-summary">
                 <div><span>TOTAL OMSET</span><div id="grandTotalStoreComputer">Rp 0</div></div>
                 <div><span>TOTAL PARKIR</span><div id="grandTotalStoreParking" style="color: #2e7d32;">Rp 0</div></div>
@@ -292,41 +303,6 @@
                     </thead>
                     <tbody id="storeClosingSummaryTableBody"></tbody>
                 </table>
-            </div>
-        </div>
-
-        <!-- BAGIAN 2: KOLOM TAMBAHAN REKAPITULASI BULANAN KAS -->
-        <div class="card" style="border-top: 4px solid #673ab7; margin-top: 30px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="margin: 0; color: #673ab7;">📊 Rekapitulasi Arus Kas Bulanan (Pemasukan Toko & Operasional)</h3>
-                <div style="display: flex; gap: 10px;">
-                    <select id="recapMonthSelect" onchange="renderMonthlyRecap()" style="padding: 6px; font-size: 0.9rem;">
-                        <option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option>
-                        <option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option>
-                        <option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option>
-                        <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
-                    </select>
-                    <select id="recapYearSelect" onchange="renderMonthlyRecap()" style="padding: 6px; font-size: 0.9rem;">
-                        <option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="grand-store-summary" style="margin-bottom: 20px;">
-                <div><span>TOTAL PEMASUKAN TOKO</span><div id="recapStoreIncome">Rp 0</div></div>
-                <div><span>TOTAL PENGELUARAN OP.</span><div id="recapOpExpense" style="color: #c62828;">Rp 0</div></div>
-                <div style="background: #fff; padding: 5px; border-radius: 6px; border: 1px dashed #1565c0;"><span style="color: #1565c0; font-size:0.75rem;">SELISIH BERSIH (NET)</span><div id="recapNetBalance" style="color: #1565c0;">Rp 0</div></div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">
-                    <h4 style="margin-top: 0; color: #2e7d32; border-bottom: 2px solid #c8e6c9; padding-bottom: 5px;">🟢 Rincian Pemasukan Toko (Bulan Ini)</h4>
-                    <div id="storeIncomeDetailBox" style="font-size: 0.9rem; line-height: 1.6;">Memuat data...</div>
-                </div>
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">
-                    <h4 style="margin-top: 0; color: #c62828; border-bottom: 2px solid #ffcdd2; padding-bottom: 5px;">🔴 Rincian Pengeluaran Operasional (Bulan Ini)</h4>
-                    <div id="opExpenseDetailBox" style="font-size: 0.9rem; line-height: 1.6;">Memuat data...</div>
-                </div>
             </div>
         </div>
     </div>
@@ -379,30 +355,17 @@
     </div>
 </div>
 
-<div class="modal" id="collectCashModal">
-    <div class="modal-content">
-        <h3>Konfirmasi Pengambilan</h3>
-        <p style="font-size: 0.85rem; color: #666;" id="collectModalStoreLabel"></p>
-        <input type="hidden" id="modalCollectId">
-        <div class="form-group"><label>Tanggal Pengambilan</label><input type="date" id="singleCollectDateInput"></div>
-        <div class="form-group"><label>Nama Pengambil</label><input type="text" id="collectorNameInput" placeholder="Contoh: Budi"></div>
-        <div class="modal-buttons"><button class="btn-cancel" onclick="document.getElementById('collectCashModal').style.display='none'">Batal</button><button class="btn-submit" onclick="confirmCollectCash()">Simpan</button></div>
-    </div>
-</div>
-
-<div class="modal" id="bulkCollectModal">
-    <div class="modal-content">
-        <h3>Konfirmasi Ceklist Masal</h3>
-        <p style="font-size: 0.85rem; color: #666;" id="bulkModalInfoText"></p>
-        <div class="form-group"><label>Nama Pengambil</label><input type="text" id="bulkCollectorNameInput" placeholder="Contoh: Budi"></div>
-        <div class="modal-buttons"><button class="btn-cancel" onclick="document.getElementById('bulkCollectModal').style.display='none'">Batal</button><button class="btn-submit" onclick="confirmBulkCollect()">Proses</button></div>
-    </div>
-</div>
-
 <div class="modal" id="editTxModal">
     <div class="modal-content">
-        <h3>Edit Transaksi</h3>
+        <h3>Edit Transaksi Brankas</h3>
         <input type="hidden" id="modalEditTxId">
+        <div class="form-group">
+            <label>Jenis Transaksi</label>
+            <select id="editTxType">
+                <option value="masuk">MASUK (+)</option>
+                <option value="keluar">KELUAR (-)</option>
+            </select>
+        </div>
         <div class="form-group"><label>Keterangan</label><input type="text" id="editTxDescInput"></div>
         <div class="form-group"><label>Tanggal (DD/MM/YYYY)</label><input type="text" id="editTxDateInput"></div>
         <div class="form-group"><label>Waktu (HH:MM:SS)</label><input type="text" id="editTxTimeInput"></div>
@@ -533,7 +496,6 @@
             renderMonthlyRecap();
         });
 
-        // Set default bulan & tahun saat ini di rekap bulanan
         const now = new Date();
         document.getElementById('recapMonthSelect').value = String(now.getMonth() + 1).padStart(2, '0');
         document.getElementById('recapYearSelect').value = String(now.getFullYear());
@@ -684,7 +646,9 @@
         const rusakVal = parseCleanNumber(document.getElementById('rusakMixInput').value);
         if (rusakVal > 0) details.push({ denomKey: 'rusak', amount: rusakVal, isRusak: true });
 
-        const now = new Date();
+        const rawDate = document.getElementById('transDateInput').value;
+        const now = rawDate ? new Date(rawDate) : new Date();
+
         transactions.push({
             id: Date.now(),
             vaultId,
@@ -703,6 +667,7 @@
         syncToCloud();
         renderDenomInputTable();
         document.getElementById('descInput').value = '';
+        document.getElementById('transDateInput').value = '';
         alert('Transaksi berhasil disimpan!');
     }
 
@@ -896,8 +861,8 @@
             let statusTd = '';
             if (isB2 && tx.type === 'keluar') {
                 statusTd = tx.exchangeStatus === 'sudah' ? 
-                    `<td><span style="color: #2e7d32; font-weight: bold; cursor: pointer;" onclick="openExchangeModal(${tx.id})">🟢 Diterima</span></td>` : 
-                    `<td><span style="color: #c62828; font-weight: bold; cursor: pointer;" onclick="openExchangeModal(${tx.id})">🔴 Belum</span></td>`;
+                    `<td><button onclick="openExchangeModal(${tx.id})" style="padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; background: #c8e6c9; color: #2e7d32;">🟢 Diterima</button></td>` : 
+                    `<td><button onclick="openExchangeModal(${tx.id})" style="padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; background: #ffcdd2; color: #c62828;">🔴 Belum</button></td>`;
             } else if (isB2) { statusTd = `<td>-</td>`; }
 
             html += `<tr>
@@ -1004,6 +969,7 @@
         let tx = transactions.find(t => t.id === txId);
         if (!tx) return;
         document.getElementById('modalEditTxId').value = tx.id;
+        document.getElementById('editTxType').value = tx.type;
         document.getElementById('editTxDescInput').value = tx.description;
         document.getElementById('editTxDateInput').value = tx.date;
         document.getElementById('editTxTimeInput').value = tx.time || '';
@@ -1011,10 +977,11 @@
     }
     function submitEditTransaction() {
         let txId = parseInt(document.getElementById('modalEditTxId').value);
+        let type = document.getElementById('editTxType').value;
         let description = document.getElementById('editTxDescInput').value.trim();
         let date = document.getElementById('editTxDateInput').value.trim();
         let time = document.getElementById('editTxTimeInput').value.trim();
-        transactions = transactions.map(tx => tx.id === txId ? { ...tx, description, date, time } : tx);
+        transactions = transactions.map(tx => tx.id === txId ? { ...tx, type, description, date, time } : tx);
         syncToCloud();
         document.getElementById('editTxModal').style.display = 'none';
         alert('Transaksi diperbarui!');
@@ -1160,7 +1127,6 @@
         let m = document.getElementById('recapMonthSelect').value;
         let y = document.getElementById('recapYearSelect').value;
 
-        // Pemasukan Toko dari storeClosings
         let storePhys = 0, storeDebit = 0, storeQris = 0, storePark = 0;
         storeClosings.forEach(item => {
             if (!item.date) return;
@@ -1175,7 +1141,6 @@
         });
         let totalStoreIncome = storePhys + storeDebit + storeQris + storePark;
 
-        // Pengeluaran Operasional dari opTransactions
         let opOutTunai = 0, opOutTransfer = 0;
         let catSummary = {};
         opTransactions.forEach(i => {
@@ -1246,71 +1211,11 @@
 
     function handleCollectionCheckbox(e, id) {
         if (e.target.checked) {
-            document.getElementById('modalCollectId').value = id;
-            document.getElementById('singleCollectDateInput').value = new Date().toISOString().split('T')[0];
-            document.getElementById('collectorNameInput').value = '';
-            document.getElementById('collectCashModal').style.display = 'flex';
+            // Ceklist mandiri dari tabel
         } else {
             storeClosings = storeClosings.map(i => i.id === id ? { ...i, isCollected: false, collectorName: '', collectionDate: '' } : i);
             db.ref('store_closings').set(storeClosings);
         }
-    }
-    function confirmCollectCash() {
-        let id = parseInt(document.getElementById('modalCollectId').value);
-        let dateVal = document.getElementById('singleCollectDateInput').value;
-        let collectorName = document.getElementById('collectorNameInput').value.trim();
-        if (!collectorName || !dateVal) { alert('Isi tanggal dan nama!'); return; }
-        let p = dateVal.split('-');
-        let formattedDate = `${p[2]}/${p[1]}/${p[0]}`;
-        storeClosings = storeClosings.map(i => i.id === id ? { ...i, isCollected: true, collectorName, collectionDate: `${formattedDate} ${new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}` } : i);
-        db.ref('store_closings').set(storeClosings);
-        document.getElementById('collectCashModal').style.display = 'none';
-    }
-
-    function toggleAllStores(checked) {
-        document.querySelectorAll('.bulk-store-cb').forEach(cb => { cb.checked = checked; toggleStoreDateInput(cb.value); });
-    }
-    function toggleStoreDateInput(store) {
-        let container = document.getElementById('storeSpecificDatesContainer');
-        let card = document.getElementById('date-box-' + store.replace(/\s+/g, ''));
-        if (document.querySelector(`.bulk-store-cb[value="${store}"]`).checked) {
-            if (!card) {
-                if (container.innerHTML.includes('Centang salah satu')) container.innerHTML = '';
-                let div = document.createElement('div');
-                div.id = 'date-box-' + store.replace(/\s+/g, '');
-                div.style.marginBottom = '5px';
-                div.innerHTML = `<label style="font-size:0.75rem; color:#00796b;">${store}</label><input type="date" class="store-specific-date" data-store="${store}" value="${new Date().toISOString().split('T')[0]}" style="font-size:0.85rem; padding:4px; width:100%;">`;
-                container.appendChild(div);
-            }
-        } else if (card) {
-            card.remove();
-            if (container.children.length === 0) container.innerHTML = `<div style="font-size: 0.85rem; color: #777;">Centang salah satu toko di atas untuk mengatur tanggal pengambilannya.</div>`;
-        }
-    }
-    function openBulkCollectModal() {
-        let stores = [];
-        document.querySelectorAll('.bulk-store-cb:checked').forEach(cb => stores.push(cb.value));
-        if (stores.length === 0) { alert('Pilih minimal satu toko!'); return; }
-        document.getElementById('bulkCollectorNameInput').value = '';
-        document.getElementById('bulkModalInfoText').innerText = `Toko: ${stores.join(', ')}`;
-        document.getElementById('bulkCollectModal').style.display = 'flex';
-    }
-    function confirmBulkCollect() {
-        let name = document.getElementById('bulkCollectorNameInput').value.trim();
-        if (!name) { alert('Nama pengambil harus diisi!'); return; }
-        let dateMap = {};
-        document.querySelectorAll('.store-specific-date').forEach(inp => {
-            let p = inp.value.split('-');
-            if (p.length === 3) dateMap[inp.dataset.store] = `${p[2]}/${p[1]}/${p[0]}`;
-        });
-        storeClosings = storeClosings.map(i => {
-            if (dateMap.hasOwnProperty(i.storePoint) && !i.isCollected) {
-                return { ...i, isCollected: true, collectorName: name, collectionDate: `${dateMap[i.storePoint]} ${new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}` };
-            }
-            return i;
-        });
-        db.ref('store_closings').set(storeClosings);
-        document.getElementById('bulkCollectModal').style.display = 'none';
     }
 
     function openEditStoreModal(id) {
