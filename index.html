@@ -53,27 +53,6 @@
 
     <!-- TAB 1: BRANKAS & TRANSAKSI -->
     <div id="vaultTab" class="tab-content active">
-        
-        <!-- REKAPITULASI ARUS KAS BULANAN (PINDAH KE ATAS) -->
-        <div class="card">
-            <h3>📊 Rekap Perputaran Brankas (Bulan Ini)</h3>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Brankas</th>
-                            <th>Total Masuk</th>
-                            <th>Total Keluar</th>
-                            <th>Selisih (Net)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="monthlySummaryBody">
-                        <tr><td colspan="4" style="text-align: center; color: #777;">Memuat rekap...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
         <div class="card">
             <h3>Pilih Brankas</h3>
             <select id="selectedVault" onchange="changeVault()" style="font-weight: bold; color: #1565c0;">
@@ -87,11 +66,6 @@
         <div class="card vault-box">
             <h3 id="formVaultTitle">Input Transaksi Brankas</h3>
             <form onsubmit="saveTransaction(event)">
-                <div class="form-group">
-                    <label>Tanggal & Waktu Transaksi (Opsional: Kosongkan untuk otomatis)</label>
-                    <input type="datetime-local" id="transDate">
-                </div>
-
                 <div class="form-group">
                     <label>Jenis Transaksi</label>
                     <select id="transType" required>
@@ -144,10 +118,40 @@
                 </table>
             </div>
         </div>
+
+        <!-- REKAPITULASI ARUS KAS BULANAN -->
+        <div class="card">
+            <h3>📊 Rekap Perputaran Brankas (Bulan Ini)</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Brankas</th>
+                            <th>Total Masuk</th>
+                            <th>Total Keluar</th>
+                            <th>Selisih (Net)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="monthlySummaryBody">
+                        <tr><td colspan="4" style="text-align: center; color: #777;">Memuat rekap...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    <!-- TAB 2: REKAP TOKO (TANPA CEKLIST MASSAL PENGAMBILAN) -->
+    <!-- TAB 2: REKAP TOKO & PENGAMBILAN PERMEN -->
     <div id="storeTab" class="tab-content">
+        <!-- FORM PENGAMBILAN PERMEN MASSAL -->
+        <div class="card" style="background: #e8f5e9; border: 2px dashed #2e7d32;">
+            <h3>🍬 Konfirmasi Pengambilan Permen (Massal)</h3>
+            <p style="font-size: 0.85rem; color: #555; margin-bottom: 15px;">Centang toko-toko yang permennya sudah diambil, lalu klik simpan.</p>
+            <div id="candyCheckboxesContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px;">
+                <!-- Diisi dinamis -->
+            </div>
+            <button type="button" class="btn-primary" onclick="saveBulkCandyStatus()" style="max-width: 250px;">Simpan Status Pengambilan</button>
+        </div>
+
         <div class="card">
             <h3>🏪 Laporan Rekap Tutup Buku Seluruh Toko</h3>
             <div class="table-responsive">
@@ -173,20 +177,12 @@
     </div>
 </div>
 
-<!-- MODAL EDIT TRANSAKSI (DENGAN OPSI JENIS MASUK/KELUAR) -->
+<!-- MODAL EDIT TRANSAKSI -->
 <div class="modal" id="editModal">
     <div class="modal-content">
-        <h3 style="color: #1565c0;">✏️ Edit Transaksi Brankas</h3>
+        <h3 style="color: #1565c0;">✏️ Edit Rincian Transaksi</h3>
         <input type="hidden" id="editRecordId">
         
-        <div class="form-group">
-            <label>Jenis Transaksi</label>
-            <select id="editType">
-                <option value="MASUK">MASUK (+)</option>
-                <option value="KELUAR">KELUAR (-)</option>
-            </select>
-        </div>
-
         <div class="form-group">
             <label>Keterangan</label>
             <input type="text" id="editDesc">
@@ -228,8 +224,10 @@
 
     let allTransactions = {};
     let storeReports = [];
+    const storeList = ["AWW Sambi", "AWW Beji", "AWW Bandung", "AWW Trenggalek", "AWW Ponorogo"];
 
     document.addEventListener('DOMContentLoaded', () => {
+        renderCandyCheckboxes();
         loadDataFromFirebase();
     });
 
@@ -249,6 +247,19 @@
         renderTransactions();
     }
 
+    function renderCandyCheckboxes() {
+        let container = document.getElementById('candyCheckboxesContainer');
+        container.innerHTML = '';
+        storeList.forEach(store => {
+            container.innerHTML += `
+                <label style="background: white; padding: 8px 12px; border-radius: 4px; border: 1px solid #c8e6c9; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" class="store-candy-chk" value="${store}" style="width: 18px; height: 18px;">
+                    <span style="font-weight: bold; color: #2e7d32;">${store}</span>
+                </label>
+            `;
+        });
+    }
+
     function loadDataFromFirebase() {
         db.ref('vault_transactions').on('value', snapshot => {
             allTransactions = snapshot.val() || {};
@@ -265,7 +276,6 @@
     function saveTransaction(e) {
         e.preventDefault();
         let vaultName = document.getElementById('selectedVault').value;
-        let rawDate = document.getElementById('transDate').value;
         let type = document.getElementById('transType').value;
         let desc = document.getElementById('transDesc').value.trim();
 
@@ -284,7 +294,7 @@
         }
 
         let now = new Date();
-        let dateStr = rawDate ? new Date(rawDate).toLocaleString('id-ID', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}).replace(/\./g, '/') : now.toLocaleString('id-ID', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}).replace(/\./g, '/');
+        let dateStr = now.toLocaleString('id-ID', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute: '2-digit'}).replace(/\./g, '/');
 
         let newRecord = {
             id: Date.now(),
@@ -293,7 +303,7 @@
             desc,
             total,
             denoms,
-            status: 'Belum' // Khusus Uang Tukar
+            status: 'Belum'
         };
 
         if (!allTransactions[vaultName]) {
@@ -305,7 +315,6 @@
         db.ref('vault_transactions').set(allTransactions).then(() => {
             alert('Transaksi berhasil disimpan!');
             document.getElementById('transDesc').value = '';
-            document.getElementById('transDate').value = '';
             document.querySelectorAll('.denom-input').forEach(i => i.value = '');
         });
     }
@@ -313,7 +322,7 @@
     function toggleStatus(vaultName, id) {
         allTransactions[vaultName] = allTransactions[vaultName].map(item => {
             if (item.id === id) {
-                let nextStatus = item.status === 'Diterima' ? 'Belum' : 'Diterima';
+                let nextStatus = item.status === 'Sudah' ? 'Belum' : 'Sudah';
                 return { ...item, status: nextStatus };
             }
             return item;
@@ -329,7 +338,6 @@
         if (!rec) return;
 
         document.getElementById('editRecordId').value = id;
-        document.getElementById('editType').value = rec.type;
         document.getElementById('editDesc').value = rec.desc;
 
         document.querySelectorAll('.edit-denom').forEach(input => {
@@ -343,7 +351,6 @@
     function submitEditTransaction() {
         let vaultName = document.getElementById('selectedVault').value;
         let id = parseFloat(document.getElementById('editRecordId').value);
-        let newType = document.getElementById('editType').value;
         let newDesc = document.getElementById('editDesc').value.trim();
 
         let denoms = {};
@@ -364,7 +371,6 @@
             if (item.id === id) {
                 return {
                     ...item,
-                    type: newType,
                     desc: newDesc,
                     total,
                     denoms
@@ -403,7 +409,7 @@
 
         list.forEach(i => {
             let isTukar = (vaultName === 'Brankas Permen Tukar');
-            let statusBtn = isTukar ? `<button onclick="toggleStatus('${vaultName}', ${i.id})" style="padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; background: ${i.status === 'Diterima' ? '#c8e6c9; color: #2e7d32;' : '#ffcdd2; color: #c62828};">${i.status === 'Diterima' ? '🟢 Diterima' : '🔴 Belum'}</button>` : '-';
+            let statusBtn = isTukar ? `<button onclick="toggleStatus('${vaultName}', ${i.id})" style="padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; background: ${i.status === 'Sudah' ? '#c8e6c9; color: #2e7d32;' : '#ffcdd2; color: #c62828};">${i.status === 'Sudah' ? '✔ Sudah' : '✖ Belum'}</button>` : '-';
             
             let denomHtml = '';
             if (i.denoms) {
@@ -457,6 +463,30 @@
         });
     }
 
+    function saveBulkCandyStatus() {
+        let selectedStores = [];
+        document.querySelectorAll('.store-candy-chk:checked').forEach(chk => {
+            selectedStores.push(chk.value);
+        });
+
+        if (selectedStores.length === 0) {
+            alert('Pilih minimal satu toko yang permennya sudah diambil!');
+            return;
+        }
+
+        storeReports = storeReports.map(r => {
+            if (selectedStores.includes(r.storeName)) {
+                return { ...r, candyTaken: true };
+            }
+            return r;
+        });
+
+        db.ref('store_closings').set(storeReports).then(() => {
+            alert('Status pengambilan permen berhasil diperbarui!');
+            document.querySelectorAll('.store-candy-chk').forEach(chk => chk.checked = false);
+        });
+    }
+
     function renderStoreReports() {
         let tbody = document.getElementById('storeReportTableBody');
         tbody.innerHTML = '';
@@ -469,7 +499,7 @@
         storeReports.sort((a, b) => b.id - a.id);
 
         storeReports.forEach(r => {
-            let statusBadge = r.candyTaken ? '<span style="color: #2e7d32; font-weight: bold;">🟢 Diambil</span>' : '<span style="color: #c62828; font-weight: bold;">🔴 Belum Diambil</span>';
+            let statusBadge = r.candyTaken ? '<span style="color: #2e7d32; font-weight: bold;">✔ Sudah Diambil</span>' : '<span style="color: #c62828; font-weight: bold;">✖ Belum Diambil</span>';
             tbody.innerHTML += `<tr>
                 <td><b>${r.storeName || '-'}</b></td>
                 <td>${r.date || '-'}</td>
