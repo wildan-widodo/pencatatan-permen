@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.61.0">
+    <meta name="app-version" content="9.62.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -227,7 +227,7 @@
 
     <!-- SLIDE 2: REKAPITULASI BULANAN KAS & REKAP 5 TITIK TOKO AWW -->
     <div class="slide-section" id="slide2">
-        <!-- BAGIAN 1: REKAPITULASI ARUS KAS BULANAN (PINDAH KE ATAS) -->
+        <!-- BAGIAN 1: REKAPITULASI ARUS KAS BULANAN -->
         <div class="card" style="border-top: 4px solid #673ab7; margin-bottom: 30px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                 <h3 style="margin: 0; color: #673ab7;">📊 Rekapitulasi Arus Kas Bulanan (Pemasukan Toko & Operasional)</h3>
@@ -420,7 +420,7 @@
     let transactions = [];
     let deletionLogs = [];
     let storeClosings = [];
-    let opTransactions = [];
+    let operationalExpenses = []; // Diubah menampung data dari operational_expenses
     let activeTabVaultId = 'b1';
     let isAuditTrailUnlocked = false;
     let selectedStoreFilter = null;
@@ -491,8 +491,9 @@
             renderMonthlyRecap();
         });
 
-        db.ref('operasional_pengeluaran').on('value', snapshot => {
-            opTransactions = snapshot.val() || [];
+        // Menghubungkan langsung ke node operasional pengeluaran yang benar
+        db.ref('operational_expenses').on('value', snapshot => {
+            operationalExpenses = snapshot.val() || [];
             renderMonthlyRecap();
         });
 
@@ -1143,18 +1144,36 @@
 
         let opOutTunai = 0, opOutTransfer = 0;
         let catSummary = {};
-        opTransactions.forEach(i => {
-            if (i.month === m && i.year === y) {
-                if (i.flowType === 'keluar') {
-                    if (i.method === 'Tunai') opOutTunai += i.amount;
-                    else opOutTransfer += i.amount;
+        operationalExpenses.forEach(i => {
+            if (!i.date) return;
+            // Membaca format tanggal baik "DD/MM/YYYY HH:mm" maupun "YYYY-MM-DD"
+            let monthMatch = false, yearMatch = false;
+            if (i.date.includes('/')) {
+                let parts = i.date.split('/');
+                if (parts.length >= 3) {
+                    monthMatch = (parts[1] === m);
+                    yearMatch = (parts[2].substring(0, 4) === y);
+                }
+            } else if (i.rawDate) {
+                let parts = i.rawDate.split('-');
+                if (parts.length >= 3) {
+                    monthMatch = (parts[1] === m);
+                    yearMatch = (parts[0] === y);
+                }
+            }
 
-                    let cKey = i.category;
-                    if (cKey === 'Material Pembangunan') cKey += ` (${i.location})`;
-                    catSummary[cKey] = (catSummary[cKey] || 0) + i.amount;
+            if (monthMatch && yearMatch) {
+                let effectiveNominal = (i.nominal || 0) - (i.sisaSetoran || 0);
+                if (effectiveNominal > 0) {
+                    if (i.method === 'Tunai') opOutTunai += effectiveNominal;
+                    else opOutTransfer += effectiveNominal;
+
+                    let cKey = i.category || 'Lainnya';
+                    catSummary[cKey] = (catSummary[cKey] || 0) + effectiveNominal;
                 }
             }
         });
+
         let totalOpExpense = opOutTunai + opOutTransfer;
         let netRecap = totalStoreIncome - totalOpExpense;
 
@@ -1210,9 +1229,7 @@
     }
 
     function handleCollectionCheckbox(e, id) {
-        if (e.target.checked) {
-            // Ceklist mandiri dari tabel
-        } else {
+        if (!e.target.checked) {
             storeClosings = storeClosings.map(i => i.id === id ? { ...i, isCollected: false, collectorName: '', collectionDate: '' } : i);
             db.ref('store_closings').set(storeClosings);
         }
