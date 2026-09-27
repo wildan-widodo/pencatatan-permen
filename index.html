@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.62.0">
+    <meta name="app-version" content="9.63.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -299,7 +299,7 @@
             <div class="table-responsive">
                 <table>
                     <thead>
-                        <tr><th>Aksi / Edit</th><th>Status Ambil</th><th>Riwayat Pengambilan</th><th>Tanggal & Waktu</th><th>Titik Toko</th><th>Total Komputer</th><th>Parkir</th><th>Debit</th><th>QRIS</th><th>Permen Fisik</th><th>Pengeluaran Toko</th></tr>
+                        <tr><th>Aksi / Edit</th><th>Riwayat Pengambilan</th><th>Tanggal & Waktu</th><th>Titik Toko</th><th>Total Komputer</th><th>Parkir</th><th>Debit</th><th>QRIS</th><th>Permen Fisik</th><th>Pengeluaran Toko</th></tr>
                     </thead>
                     <tbody id="storeClosingSummaryTableBody"></tbody>
                 </table>
@@ -420,7 +420,7 @@
     let transactions = [];
     let deletionLogs = [];
     let storeClosings = [];
-    let operationalExpenses = []; // Diubah menampung data dari operational_expenses
+    let operationalExpenses = [];
     let activeTabVaultId = 'b1';
     let isAuditTrailUnlocked = false;
     let selectedStoreFilter = null;
@@ -491,7 +491,6 @@
             renderMonthlyRecap();
         });
 
-        // Menghubungkan langsung ke node operasional pengeluaran yang benar
         db.ref('operational_expenses').on('value', snapshot => {
             operationalExpenses = snapshot.val() || [];
             renderMonthlyRecap();
@@ -1088,14 +1087,12 @@
         }
 
         if (displayed.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #777;">Belum ada data rekap tutup buku.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #777;">Belum ada data rekap tutup buku.</td></tr>`;
             return;
         }
 
         displayed.forEach(i => {
-            let checked = i.isCollected ? 'checked' : '';
-            let status = i.isCollected ? `<span style="color: #2e7d32; font-size:0.8rem;"><b>Diambil</b> (${i.collectorName || 'Pusat'})</span>` : `<span style="color: #c62828; font-size:0.8rem;">Belum</span>`;
-            let collectionInfo = i.isCollected ? `<div style="font-size:0.8rem; color:#2e7d32; font-weight:bold;">${i.collectionDate || '-'}</div>` : `<div style="font-size:0.8rem; color:#c62828;">Belum Diambil</div>`;
+            let collectionInfo = i.isCollected ? `<div style="font-size:0.8rem; color:#2e7d32; font-weight:bold;">✔ Diambil (${i.collectorName || 'Pusat'})<br>${i.collectionDate || '-'}</div>` : `<div style="font-size:0.8rem; color:#c62828; font-weight:bold;">✖ Belum Diambil</div>`;
             
             let expenseFormatted = '-';
             if (i.expenseDesc && i.expenseDesc !== '-') {
@@ -1110,7 +1107,6 @@
 
             tbody.innerHTML += `<tr>
                 <td><button class="btn-edit" onclick="requestEditStore(${i.id})">✏️</button><button class="btn-trash" onclick="requestDeleteStore(${i.id})">🗑️</button></td>
-                <td style="text-align:center;"><input type="checkbox" ${checked} onchange="handleCollectionCheckbox(event, ${i.id})" style="width:18px;height:18px;cursor:pointer;"><div>${status}</div></td>
                 <td>${collectionInfo}</td>
                 <td>${i.date} ${i.time}</td>
                 <td><b>${i.storePoint}</b></td>
@@ -1146,7 +1142,6 @@
         let catSummary = {};
         operationalExpenses.forEach(i => {
             if (!i.date) return;
-            // Membaca format tanggal baik "DD/MM/YYYY HH:mm" maupun "YYYY-MM-DD"
             let monthMatch = false, yearMatch = false;
             if (i.date.includes('/')) {
                 let parts = i.date.split('/');
@@ -1226,13 +1221,6 @@
             }
             return false;
         });
-    }
-
-    function handleCollectionCheckbox(e, id) {
-        if (!e.target.checked) {
-            storeClosings = storeClosings.map(i => i.id === id ? { ...i, isCollected: false, collectorName: '', collectionDate: '' } : i);
-            db.ref('store_closings').set(storeClosings);
-        }
     }
 
     function openEditStoreModal(id) {
