@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.66.0-checkpoint-pusat">
+    <meta name="app-version" content="9.67.0-checkpoint-pusat">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -291,9 +291,9 @@
 
             <!-- OPSI TAMPILAN GRAFIK (MINGGUAN, BULANAN, TAHUNAN) -->
             <div class="chart-mode-tabs">
-                <button type="button" class="chart-mode-btn active" id="modeMingguan" onclick="setChartMode('mingguan')">📅 Mingguan</button>
-                <button type="button" class="chart-mode-btn" id="modeBulanan" onclick="setChartMode('bulanan')">📊 Bulanan</button>
-                <button type="button" class="chart-mode-btn" id="modeTahunan" onclick="setChartMode('tahunan')">📈 Tahunan</button>
+                <button type="button" class="chart-mode-btn active" id="modeMingguan" onclick="setChartMode('mingguan')">📅 Mingguan (7 Hari Terakhir)</button>
+                <button type="button" class="chart-mode-btn" id="modeBulanan" onclick="setChartMode('bulanan')">📊 Bulanan (Bulan Filter)</button>
+                <button type="button" class="chart-mode-btn" id="modeTahunan" onclick="setChartMode('tahunan')">📈 Tahunan (Tahun Filter)</button>
             </div>
 
             <!-- DUA GRAFIK VERTIKAL TERPISAH (OMSET & PARKIR) -->
@@ -1090,20 +1090,45 @@
         const m = document.getElementById('filterMonthSelect').value;
         const y = document.getElementById('filterYearSelect').value;
 
-        let filteredLogs = storeClosings.filter(item => {
+        // 1. Filter Dasar Sesuai Bulan & Tahun Dropdown
+        let baseFilteredLogs = storeClosings.filter(item => {
             if (!item.date) return false;
             let parts = item.date.split('/');
             if (parts.length < 3) return false;
             return (m === 'all' || parts[1] === m) && (y === 'all' || parts[2] === y);
         });
 
+        // 2. Pemfilteran Khusus untuk Grafik Berdasarkan Mode Waktu
+        let chartLogs = [...baseFilteredLogs];
+        const nowTimestamp = new Date().getTime();
+
+        if (currentChartMode === 'mingguan') {
+            // Hanya ambil data dalam rentang 7 hari terakhir dari hari ini
+            const sevenDaysAgo = nowTimestamp - (7 * 24 * 60 * 60 * 1000);
+            chartLogs = chartLogs.filter(item => {
+                let parts = item.date.split('/');
+                if (parts.length < 3) return false;
+                let itemDate = new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+                return itemDate >= sevenDaysAgo && itemDate <= nowTimestamp;
+            });
+        } else if (currentChartMode === 'tahunan') {
+            // Filter murni berdasarkan tahun yang dipilih pada dropdown tahun (tanpa batasan bulan)
+            chartLogs = storeClosings.filter(item => {
+                if (!item.date) return false;
+                let parts = item.date.split('/');
+                if (parts.length < 3) return false;
+                return (y === 'all' || parts[2] === y);
+            });
+        }
+
+        // Hitung Statistik Utama (Kartu & Tabel berdasarkan filter dasar m/y)
         let grandComp = 0, grandPark = 0, uncolCash = 0, uncolPark = 0;
         let storeStatsMap = {};
         storeNames.forEach(store => {
             storeStatsMap[store] = { comp: 0, park: 0, debit: 0, qris: 0, phys: 0, count: 0 };
         });
 
-        filteredLogs.forEach(i => {
+        baseFilteredLogs.forEach(i => {
             if (storeNames.includes(i.storePoint)) {
                 let comp = i.computerOmset || ((i.debit || 0) + (i.qris || 0) + (i.physicalCash || 0));
                 let park = i.parking || 0;
@@ -1123,19 +1148,20 @@
             }
         });
 
-        // Sesuaikan nilai berdasarkan mode chart (Mingguan, Bulanan, Tahunan)
-        let chartDataMap = JSON.parse(JSON.stringify(storeStatsMap));
-        if (currentChartMode === 'mingguan') {
-            storeNames.forEach(store => {
-                chartDataMap[store].comp = Math.round(chartDataMap[store].comp / 4.3);
-                chartDataMap[store].park = Math.round(chartDataMap[store].park / 4.3);
-            });
-        } else if (currentChartMode === 'tahunan') {
-            storeNames.forEach(store => {
-                chartDataMap[store].comp = chartDataMap[store].comp * 12;
-                chartDataMap[store].park = chartDataMap[store].park * 12;
-            });
-        }
+        // Hitung Statistik Khusus Grafik Berdasarkan chartLogs
+        let chartStatsMap = {};
+        storeNames.forEach(store => {
+            chartStatsMap[store] = { comp: 0, park: 0 };
+        });
+
+        chartLogs.forEach(i => {
+            if (storeNames.includes(i.storePoint)) {
+                let comp = i.computerOmset || ((i.debit || 0) + (i.qris || 0) + (i.physicalCash || 0));
+                let park = i.parking || 0;
+                chartStatsMap[i.storePoint].comp += comp;
+                chartStatsMap[i.storePoint].park += park;
+            }
+        });
 
         // Render Kartu Kolom Toko
         storeNames.forEach(store => {
@@ -1158,10 +1184,10 @@
         document.getElementById('grandTotalUncollectedCash').innerText = formatRp(uncolCash);
         document.getElementById('grandTotalUncollectedParking').innerText = formatRp(uncolPark);
 
-        // Render Grafik Batang Vertikal Terpisah
-        renderVerticalCharts(chartDataMap);
+        // Render Grafik Batang Vertikal Berdasarkan Data Riwayat Asli
+        renderVerticalCharts(chartStatsMap);
 
-        renderStoreClosingsTable(filteredLogs);
+        renderStoreClosingsTable(baseFilteredLogs);
     }
 
     function renderVerticalCharts(statsMap) {
