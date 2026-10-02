@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.71.0-checkpoint-pusat-rekap-permen">
+    <meta name="app-version" content="9.72.0-checkpoint-pusat-clean">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -274,27 +274,6 @@
 
             <!-- KARTU RINGKASAN TIAP TOKO -->
             <div class="store-columns-grid" id="storeColumnsContainer"></div>
-
-            <!-- TABEL BARU KHUSUS: REKAP TOTAL PERIODE PENGAMBILAN PERMEN -->
-            <div class="card" style="background: #f1f8e9; border: 1px solid #c8e6c9; margin-top: 25px;">
-                <h3 style="color: #2e7d32; margin-bottom: 8px;">📦 Rekapitulasi Total Pengambilan Permen Berdasarkan Waktu Penarikan</h3>
-                <p style="font-size: 0.85rem; color: #555; margin-bottom: 12px;">Menampilkan ringkasan total nilai permen yang ditarik berdasarkan pencocokan tanggal/waktu penarikan (tanpa rincian harian).</p>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Titik Toko</th>
-                                <th>Waktu / Tanggal Penarikan</th>
-                                <th>Petugas / Pengambil</th>
-                                <th>Total Permen Diambil (Rp)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="candyCollectionSummaryTableBody">
-                            <tr><td colspan="4" style="text-align: center; color: #777;">Memuat ringkasan penarikan...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
 
             <div class="filter-bar" style="margin-top: 25px;">
                 <div style="font-weight: bold; color: #333; font-size: 0.95rem; margin-right: 10px;">🔍 Filter Riwayat:</div>
@@ -813,7 +792,7 @@
         activeDenoms.forEach(d => {
             gridHtml += `<div class="denom-summary-card" style="border-top: 4px solid ${d.color};"><div class="denom-badge">${d.emoji}</div><h5 style="color: ${d.color};">${d.label}</h5><div style="font-weight: bold; color: ${totals[d.key] < 0 ? '#c62828' : '#2e7d32'};">${formatRp(totals[d.key])}</div></div>`;
         });
-        gridHtml += `<div class="denom-summary-card" style="border-top: 4px solid #b71c1c;"><div class="denom-badge">⚠️️</div><h5 style="color: #b71c1c;">Permen Rusak Mix</h5><div style="font-weight: bold; color: #b71c1c;">${formatRp(totalRusakMix)}</div></div></div>`;
+        gridHtml += `<div class="denom-summary-card" style="border-top: 4px solid #b71c1c;"><div class="denom-badge">⚠️</div><h5 style="color: #b71c1c;">Permen Rusak Mix</h5><div style="font-weight: bold; color: #b71c1c;">${formatRp(totalRusakMix)}</div></div></div>`;
         container.innerHTML = gridHtml;
     }
 
@@ -1118,64 +1097,7 @@
         document.getElementById('grandTotalUncollectedCash').innerText = formatRp(uncolCash);
         document.getElementById('grandTotalUncollectedParking').innerText = formatRp(uncolPark);
 
-        renderCandyCollectionSummary(baseFilteredLogs);
         renderStoreClosingsTable(baseFilteredLogs);
-    }
-
-    function renderCandyCollectionSummary(filteredLogs) {
-        let tbody = document.getElementById('candyCollectionSummaryTableBody');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-
-        // Kelompokkan data yang sudah diambil berdasarkan (toko + waktu penarikan / tanggal pengambilan)
-        let groupMap = {};
-
-        filteredLogs.forEach(i => {
-            if (i.isCollected) {
-                let store = i.storePoint || 'Lainnya';
-                // Ambil tanggal penarikan / pengambilan (misal: '24/10/2026' dari collectionDate atau gunakan tanggal laporan jika kosong)
-                let collectionDateRaw = i.collectionDate && i.collectionDate !== '-' ? i.collectionDate.split(' ')[0] : i.date;
-                let collector = i.collectorName || 'Pusat';
-
-                let groupKey = `${store}_${collectionDateRaw}_${collector}`;
-
-                if (!groupMap[groupKey]) {
-                    groupMap[groupKey] = {
-                        store: store,
-                        collectionDate: collectionDateRaw,
-                        collector: collector,
-                        totalAmount: 0,
-                        dates: []
-                    };
-                }
-                groupMap[groupKey].totalAmount += (i.physicalCash || 0);
-                if (i.date && !groupMap[groupKey].dates.includes(i.date)) {
-                    groupMap[groupKey].dates.push(i.date);
-                }
-            }
-        });
-
-        let summaryArray = Object.values(groupMap);
-
-        if (summaryArray.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #777;">Belum ada riwayat penarikan permen yang tercatat.</td></tr>`;
-            return;
-        }
-
-        summaryArray.forEach(item => {
-            // Urutkan tanggal permen jika ada beberapa
-            item.dates.sort();
-            let minDate = item.dates.length > 0 ? item.dates[0] : '-';
-            let maxDate = item.dates.length > 0 ? item.dates[item.dates.length - 1] : '-';
-            let rangeText = (minDate === maxDate) ? `Tanggal ${minDate}` : `Dari tanggal ${minDate} s/d ${maxDate}`;
-
-            tbody.innerHTML += `<tr>
-                <td><b>${item.store}</b></td>
-                <td><span style="color: #0d47a1; font-weight: bold;">${rangeText}</span><br><small style="color: #555;">Ditarik pada: ${item.collectionDate}</small></td>
-                <td>${item.collector}</td>
-                <td style="color: #2e7d32; font-weight: bold; font-size: 1.05rem;">${formatRp(item.totalAmount)}</td>
-            </tr>`;
-        });
     }
 
     function filterStoreHistory(store) {
