@@ -3,445 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.69.0-checkpoint-pusat">
+    <title>Aplikasi Pusat AWW - Rekapitulasi & Pengambilan Permen</title>
+    <meta name="app-version" content="2.20.0-checkpoint-pusat-tabel-permen">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         * { box-sizing: border-box; font-family: Arial, sans-serif; }
         body { background: #f4f6f8; margin: 0; padding: 15px; }
         .container { max-width: 1200px; margin: auto; display: none; }
-        .login-container { max-width: 400px; margin: 80px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; }
-        
         .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         h2, h3 { margin-top: 0; color: #333; }
-        
-        .main-nav { display: flex; gap: 10px; margin-bottom: 20px; background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .main-nav-btn { flex: 1; background: #e0e0e0; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; color: #555; font-size: 1rem; text-align: center; }
-        .main-nav-btn.active { background: #1565c0; color: white; }
-
-        .slide-section { display: none; }
-        .slide-section.active { display: block; }
-
-        .total-card { background: #1565c0; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .vault-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 15px; }
-        .vault-card { background: #eef2f5; padding: 15px; border-radius: 6px; border-left: 5px solid #2e7d32; position: relative; }
-        .vault-card .balance { font-size: 1.2rem; font-weight: bold; color: #2e7d32; margin-bottom: 10px; }
-        .vault-card .pin-btn { background: #c62828; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; margin-top: 8px; }
-        .vault-card .pin-btn.unlocked { background: #2e7d32; }
-
-        .filter-bar { background: #f1f3f5; padding: 12px; border-radius: 6px; margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-        .filter-bar select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.95rem; width: auto; flex: 1; }
-
-        .store-columns-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .store-column-card { background: #f8f9fa; border: 1px solid #dcdcdc; border-top: 4px solid #00796b; padding: 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
-        .store-column-card:hover { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); background: #f1f8f6; }
-        .store-column-card.active-filter { border: 2px solid #00796b; background: #e0f2f1; }
-        .store-column-card h4 { margin: 0 0 10px 0; color: #00796b; font-size: 1rem; text-align: center; border-bottom: 1px solid #ddd; padding-bottom: 6px; }
-        .store-stat-item { margin-bottom: 6px; font-size: 0.85rem; }
-        .store-stat-item label { color: #666; display: block; font-size: 0.7rem; }
-        .store-stat-item span { font-weight: bold; color: #333; }
-
-        .grand-store-summary { background: #e3f2fd; border: 2px dashed #1565c0; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; text-align: center; }
-        .grand-store-summary div div { font-size: 1.2rem; font-weight: bold; color: #0d47a1; margin-top: 4px; }
-
-        /* Styling Grafik Vertikal */
-        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 20px; }
-        .chart-container { background: #fafafa; border: 1px solid #e0e0e0; padding: 15px; border-radius: 8px; }
-        
-        .chart-vertical-wrapper { display: flex; align-items: flex-end; justify-content: space-around; height: 220px; border-bottom: 2px solid #ccc; padding-top: 20px; gap: 8px; margin-bottom: 10px; }
-        .chart-col { display: flex; flex-direction: column; align-items: center; flex: 1; height: 100%; justify-content: flex-end; }
-        .chart-bar-vert { width: 100%; max-width: 40px; border-radius: 4px 4px 0 0; transition: height 0.4s ease; min-height: 4px; }
-        .chart-bar-vert.comp { background: #1565c0; }
-        .chart-bar-vert.park { background: #2e7d32; }
-        .chart-val-label { font-size: 0.65rem; color: #333; font-weight: bold; margin-bottom: 4px; text-align: center; white-space: nowrap; }
-        .chart-x-label { font-size: 0.75rem; color: #555; text-align: center; font-weight: bold; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
-
-        .chart-mode-tabs { display: flex; gap: 5px; margin-bottom: 12px; background: #eef2f5; padding: 4px; border-radius: 6px; }
-        .chart-mode-btn { flex: 1; background: transparent; border: none; padding: 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; color: #555; cursor: pointer; text-align: center; }
-        .chart-mode-btn.active { background: #fff; color: #1565c0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-
-        .tab-container { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #ddd; padding-bottom: 10px; flex-wrap: wrap; }
-        .tab-btn { background: #e0e0e0; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; color: #555; font-size: 0.9rem; }
-        .tab-btn.active { background: #2196F3; color: white; }
-        .tab-btn.master-tab { background: #673ab7; color: white; }
-        .tab-btn.master-tab.active { background: #512da8; }
-
-        .modal { display: none; position: fixed; z-index: 10; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
-        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 450px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); text-align: center; max-height: 90vh; overflow-y: auto; }
-        .modal-buttons { display: flex; gap: 10px; margin-top: 15px; }
-
-        .denom-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-        .denom-summary-card { background: #fdfdfd; border: 1px solid #e0e0e0; padding: 12px; border-radius: 6px; text-align: center; }
-        .denom-badge { font-size: 1.8rem; margin-bottom: 5px; }
-
         .form-group { margin-bottom: 15px; text-align: left; }
         label { display: block; margin-bottom: 5px; color: #666; font-weight: bold; font-size: 0.9rem; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 1.1rem; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; }
         
-        .highlight-box { background: #e3f2fd; border: 2px dashed #1565c0; padding: 15px; border-radius: 6px; margin-bottom: 15px; }
-        .denom-input-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        .denom-input-table th, .denom-input-table td { padding: 6px; border: 1px solid #ddd; text-align: center; }
-        .denom-input-table th { background: #f1f3f5; font-size: 0.85rem; color: #444; }
-        .denom-input-table input { text-align: center; padding: 10px; font-size: 1.1rem; }
-
-        .btn-primary { background: #2196F3; color: white; border: none; padding: 12px 15px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1.1rem; }
-        .btn-success { background: #2e7d32; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .btn-pdf { background: #d32f2f; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .btn-cancel { background: #9e9e9e; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; width: 100%; }
-        .btn-submit { background: #4caf50; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; width: 100%; }
-        .btn-link-share { background: #607d8b; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 5px; }
-        .btn-trash { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
-        .btn-edit { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; margin-right: 4px; }
+        .btn-primary { background: #1565c0; color: white; border: none; padding: 12px 15px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1.1rem; }
+        .btn-cancel { background: #c62828; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         
         .table-responsive { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; white-space: nowrap; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; font-size: 0.85rem; white-space: nowrap; }
         th { background: #f8f9fa; }
-        .masuk { color: #2e7d32; font-weight: bold; }
-        .keluar { color: #c62828; font-weight: bold; }
-        .vertical-details { font-size: 0.8rem; line-height: 1.4; white-space: normal; min-width: 220px; }
+        
+        .login-card { max-width: 380px; margin: 80px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; }
+        .summary-box { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+        .summary-card { flex: 1; min-width: 220px; background: #e3f2fd; padding: 15px; border-radius: 6px; border: 1px solid #90caf9; }
+        .summary-card h4 { margin: 0 0 8px 0; color: #0d47a1; font-size: 0.9rem; }
+        .summary-card p { margin: 0; font-size: 1.3rem; font-weight: bold; color: #1565c0; }
     </style>
 </head>
 <body>
 
-<!-- HALAMAN LOGIN FIREBASE AUTH -->
-<div class="login-container" id="loginCard">
-    <h2>Login Admin AWW</h2>
-    <p style="font-size: 0.85rem; color: #666; margin-bottom: 20px;">Masukkan akun terdaftar Anda</p>
-    <form onsubmit="handleLogin(event)">
-        <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="loginEmail" placeholder="admin@aww.com" required>
-        </div>
-        <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="loginPassword" placeholder="••••••••" required>
-        </div>
-        <button type="submit" class="btn-primary" style="margin-top: 10px;">Masuk ke Aplikasi</button>
-    </form>
+<!-- HALAMAN LOGIN PIN PUSAT -->
+<div class="login-card" id="loginCard">
+    <h2>Login Pusat AWW</h2>
+    <p style="font-size: 0.85rem; color: #666; margin-bottom: 20px;">Masukkan PIN Master / Owner</p>
+    <div class="form-group">
+        <label>PIN Akses</label>
+        <input type="password" id="loginPinInput" placeholder="••••••" maxlength="6" style="text-align: center; letter-spacing: 5px; font-size: 1.3rem;" onkeydown="if(event.key==='Enter'){ handlePusatLogin(); }">
+    </div>
+    <button type="button" class="btn-primary" onclick="handlePusatLogin()">Masuk Dashboard</button>
     <div id="loginError" style="color: #c62828; font-size: 0.85rem; margin-top: 15px;"></div>
 </div>
 
-<!-- APLIKASI UTAMA -->
+<!-- APLIKASI UTAMA PUSAT -->
 <div class="container" id="appContainer">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
-        <h2 style="margin: 0;">Pencatatan Keuangan Pusat AWW</h2>
-        <div style="display: flex; gap: 8px;">
-            <button class="btn-link-share" onclick="openLinkModal()">🔗 Tautan & QR</button>
-            <button class="btn-cancel" onclick="handleLogout()" style="width: auto; padding: 6px 12px; font-size: 0.85rem;">🚪 Keluar</button>
+    <div class="card" style="display: flex; justify-content: space-between; align-items: center; background: #1565c0; color: white; flex-wrap: wrap; gap: 10px;">
+        <div>
+            <h2 style="margin: 0; color: white;">👑 DASHBOARD PUSAT & REKAPITULASI TOKO</h2>
+            <p style="font-size: 0.85rem; margin: 5px 0 0 0;">Monitoring Keuangan, Omset, & Riwayat Pengambilan Permen</p>
         </div>
+        <button class="btn-cancel" onclick="handlePusatLogout()">🚪 Keluar Akun</button>
     </div>
 
-    <div class="main-nav">
-        <button class="main-nav-btn active" id="navSlide1" onclick="switchSlide(1)">📁 Slide 1: Brankas Permen</button>
-        <button class="main-nav-btn" id="navSlide2" onclick="requestSlide2()">🏪 Slide 2: Rekap Toko & Arus Kas</button>
-    </div>
-
-    <!-- SLIDE 1: PENCATATAN BRANKAS -->
-    <div class="slide-section active" id="slide1">
-        <div class="total-card" id="grandTotalCard" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <div>
-                <h3 id="grandTotalTitle" style="margin: 0; color: white;">Total Saldo Keseluruhan</h3>
-                <div id="grandTotalBalanceContainer" style="font-size: 1.5rem; font-weight: bold; margin-top: 5px;">Rp 0</div>
+    <!-- FILTER BULAN & TAHUN -->
+    <div class="card">
+        <h3>🔍 Filter Rekapitulasi</h3>
+        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+            <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+                <label>Pilih Bulan:</label>
+                <select id="filterMonth" onchange="renderDashboardData()">
+                    <option value="0">Januari</option>
+                    <option value="1">Februari</option>
+                    <option value="2">Maret</option>
+                    <option value="3">April</option>
+                    <option value="4">Mei</option>
+                    <option value="5">Juni</option>
+                    <option value="6">Juli</option>
+                    <option value="7">Agustus</option>
+                    <option value="8">September</option>
+                    <option value="9" selected>Oktober</option>
+                    <option value="10">November</option>
+                    <option value="11">Desember</option>
+                </select>
             </div>
-            <div>
-                <button type="button" class="btn-submit" onclick="requestUnlockAllVaults()" style="background: #ff9800; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer;">🔓 Buka Semua dengan Master PIN</button>
+            <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+                <label>Pilih Tahun:</label>
+                <select id="filterYear" onchange="renderDashboardData()">
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2027">2027</option>
+                </select>
             </div>
-        </div>
-
-        <div class="card">
-            <h3>Saldo & Keamanan Brankas Permen</h3>
-            <div class="vault-grid" id="vaultContainer"></div>
-        </div>
-
-        <div class="card">
-            <h3 style="margin-bottom: 10px;">Rekap Perputaran Brankas Permen (<span id="currentMonthLabel"></span>)</h3>
-            <div id="summaryContentArea"></div>
-        </div>
-
-        <div class="card">
-            <h3>Rekap Total Per Pecahan Permen</h3>
-            <div class="tab-container" id="denomTabContainer"></div>
-            <div id="denomSummaryContent"></div>
-        </div>
-
-        <div class="card">
-            <h3 style="margin-bottom: 10px;">Tambah Transaksi Permen</h3>
-            <form id="transactionForm" onsubmit="saveTransaction(event)">
-                <div class="highlight-box">
-                    <div class="form-group" style="margin-bottom: 12px;">
-                        <label>📁 PILIH BRANKAS TUJUAN:</label>
-                        <select id="vaultSelect" onchange="renderDenomInputTable()" required></select>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>⚡ PILIH JENIS TRANSAKSI:</label>
-                        <select id="typeSelect" required>
-                            <option value="masuk">🟢 Permen Masuk (+)</option>
-                            <option value="keluar">🔴 Permen Keluar (-)</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Tanggal Transaksi (Opsional: Kosongkan untuk otomatis)</label>
-                    <input type="datetime-local" id="transDateInput">
-                </div>
-                <div class="form-group">
-                    <label>Isi Berdasarkan Pecahan / Kategori Nominal Langsung</label>
-                    <div class="table-responsive">
-                        <table class="denom-input-table">
-                            <thead><tr><th>Pecahan / Kategori</th><th>Nominal Langsung (Rp)</th></tr></thead>
-                            <tbody id="denomInputTableBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label><b>Total Keseluruhan Transaksi (Rp)</b></label>
-                    <input type="text" id="grandAmountInput" readonly placeholder="Otomatis terhitung" style="font-weight: bold; font-size: 1.1rem; color: #2e7d32;" required>
-                </div>
-                <div class="form-group">
-                    <label>Keterangan</label>
-                    <input type="text" id="descInput" placeholder="Contoh: Setoran Tunai / Penukaran Permen" required>
-                </div>
-                <button type="submit" class="btn-primary">Simpan Transaksi</button>
-            </form>
-        </div>
-
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="margin: 0;">Riwayat Transaksi</h3>
-                <div style="display: flex; gap: 8px;">
-                    <button type="button" class="btn-success" onclick="exportToExcel()" style="width: auto; margin-top:0;">Export Excel</button>
-                    <button type="button" class="btn-pdf" onclick="exportToPDF()" style="width: auto; margin-top:0;">Export PDF</button>
-                </div>
-            </div>
-            <div class="tab-container" id="historyTabContainer"></div>
-            <div id="historyContent"></div>
-        </div>
-
-        <div class="card" id="auditTrailCard">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="color: #c62828; margin: 0;">🛡️ Audit Trail (Riwayat Penghapusan Transaksi)</h3>
-                <button type="button" id="unlockAuditBtn" class="btn-submit" onclick="requestUnlockAuditTrail()" style="background: #673ab7; width: auto; padding: 6px 12px; font-size: 0.85rem;">🔑 Buka dengan Master PIN</button>
-            </div>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr><th>Waktu Hapus</th><th>Brankas Sumber</th><th>Jenis</th><th>Nominal</th><th>Keterangan Asli</th><th>Alasan Penghapusan</th></tr>
-                    </thead>
-                    <tbody id="auditTrailTableBody">
-                        <tr><td colspan="6" style="text-align: center; color: #777;">Belum ada riwayat penghapusan.</td></tr>
-                    </tbody>
-                </table>
+            <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+                <label>Pilih Toko:</label>
+                <select id="filterStore" onchange="renderDashboardData()">
+                    <option value="ALL">Semua Toko</option>
+                    <option value="AWW Sambi">AWW Sambi</option>
+                    <option value="AWW Beji">AWW Beji</option>
+                    <option value="AWW Bandung">AWW Bandung</option>
+                    <option value="AWW Trenggalek">AWW Trenggalek</option>
+                    <option value="AWW Ponorogo">AWW Ponorogo</option>
+                </select>
             </div>
         </div>
     </div>
 
-    <!-- SLIDE 2: REKAPITULASI BULANAN KAS & REKAP 5 TITIK TOKO AWW -->
-    <div class="slide-section" id="slide2">
-        <!-- BAGIAN 1: REKAPITULASI ARUS KAS BULANAN -->
-        <div class="card" style="border-top: 4px solid #673ab7; margin-bottom: 30px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="margin: 0; color: #673ab7;">📊 Rekapitulasi Arus Kas Bulanan (Pemasukan Toko & Operasional)</h3>
-                <div style="display: flex; gap: 10px;">
-                    <select id="recapMonthSelect" onchange="renderMonthlyRecap()" style="padding: 6px; font-size: 0.9rem;">
-                        <option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option>
-                        <option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option>
-                        <option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option>
-                        <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
-                    </select>
-                    <select id="recapYearSelect" onchange="renderMonthlyRecap()" style="padding: 6px; font-size: 0.9rem;">
-                        <option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="grand-store-summary" style="margin-bottom: 20px;">
-                <div><span>TOTAL PEMASUKAN TOKO</span><div id="recapStoreIncome">Rp 0</div></div>
-                <div><span>TOTAL PENGELUARAN OP.</span><div id="recapOpExpense" style="color: #c62828;">Rp 0</div></div>
-                <div style="background: #fff; padding: 5px; border-radius: 6px; border: 1px dashed #1565c0;"><span style="color: #1565c0; font-size:0.75rem;">SELISIH BERSIH (NET)</span><div id="recapNetBalance" style="color: #1565c0;">Rp 0</div></div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">
-                    <h4 style="margin-top: 0; color: #2e7d32; border-bottom: 2px solid #c8e6c9; padding-bottom: 5px;">🟢 Rincian Pemasukan Toko (Bulan Ini)</h4>
-                    <div id="storeIncomeDetailBox" style="font-size: 0.9rem; line-height: 1.6;">Memuat data...</div>
-                </div>
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">
-                    <h4 style="margin-top: 0; color: #c62828; border-bottom: 2px solid #ffcdd2; padding-bottom: 5px;">🔴 Rincian Pengeluaran Operasional (Bulan Ini)</h4>
-                    <div id="opExpenseDetailBox" style="font-size: 0.9rem; line-height: 1.6;">Memuat data...</div>
-                </div>
-            </div>
+    <!-- RINGKASAN KEUANGAN -->
+    <div class="summary-box">
+        <div class="summary-card">
+            <h4>TOTAL PEMASUKAN TOKO</h4>
+            <p id="sumTotalIncome">Rp 0</p>
         </div>
-
-        <!-- BAGIAN 2: REKAP 5 TOKO -->
-        <div class="card">
-            <h3 style="margin-bottom: 15px;">🏪 Ringkasan Omset, Permen Fisik & Parkir 5 Titik Toko AWW</h3>
-            <div class="grand-store-summary">
-                <div><span>TOTAL OMSET</span><div id="grandTotalStoreComputer">Rp 0</div></div>
-                <div><span>TOTAL PARKIR</span><div id="grandTotalStoreParking" style="color: #2e7d32;">Rp 0</div></div>
-                <div style="background: #fffde7; padding: 5px; border-radius: 6px; border: 1px dashed #fbc02d;"><span style="color: #b71c1c; font-size:0.75rem;">FISIK BELUM DIAMBIL</span><div id="grandTotalUncollectedCash" style="color: #c62828;">Rp 0</div></div>
-                <div style="background: #e8f5e9; padding: 5px; border-radius: 6px; border: 1px dashed #81c784;"><span style="color: #2e7d32; font-size:0.75rem;">PARKIR BELUM DIAMBIL</span><div id="grandTotalUncollectedParking" style="color: #2e7d32;">Rp 0</div></div>
-            </div>
-
-            <!-- OPSI TAMPILAN GRAFIK (MINGGUAN, BULANAN, TAHUNAN) -->
-            <div class="chart-mode-tabs">
-                <button type="button" class="chart-mode-btn active" id="modeMingguan" onclick="setChartMode('mingguan')">📅 Mingguan (7 Hari Terakhir)</button>
-                <button type="button" class="chart-mode-btn" id="modeBulanan" onclick="setChartMode('bulanan')">📊 Bulanan (Bulan Filter)</button>
-                <button type="button" class="chart-mode-btn" id="modeTahunan" onclick="setChartMode('tahunan')">📈 Tahunan (Tahun Filter)</button>
-            </div>
-
-            <!-- DUA GRAFIK VERTIKAL TERPISAH (OMSET & PARKIR) -->
-            <div class="charts-grid">
-                <!-- Grafik Vertikal 1: Omset Komputer -->
-                <div class="chart-container">
-                    <h4 style="margin-top: 0; color: #1565c0; border-bottom: 1px solid #ddd; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-                        <span>📈 Grafik Omset Komputer Toko</span>
-                    </h4>
-                    <div class="chart-vertical-wrapper" id="storeCompChartArea">
-                        <p style="text-align: center; color: #777; font-size: 0.85rem; width: 100%;">Memuat grafik...</p>
-                    </div>
-                </div>
-
-                <!-- Grafik Vertikal 2: Pendapatan Parkir -->
-                <div class="chart-container">
-                    <h4 style="margin-top: 0; color: #2e7d32; border-bottom: 1px solid #ddd; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-                        <span>🅿️ Grafik Pendapatan Parkir Toko</span>
-                    </h4>
-                    <div class="chart-vertical-wrapper" id="storeParkChartArea">
-                        <p style="text-align: center; color: #777; font-size: 0.85rem; width: 100%;">Memuat grafik...</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- KARTU RINGKASAN TIAP TOKO (DENGAN KETERANGAN FISIK BELUM DIAMBIL) -->
-            <div class="store-columns-grid" id="storeColumnsContainer"></div>
-
-            <div class="filter-bar" style="margin-top: 25px;">
-                <div style="font-weight: bold; color: #333; font-size: 0.95rem; margin-right: 10px;">🔍 Filter Riwayat:</div>
-                <div style="flex: 1; min-width: 140px;">
-                    <label style="font-size: 0.75rem; color: #555; margin-bottom: 2px;">Bulan:</label>
-                    <select id="filterMonthSelect" onchange="processAndRenderStoreData()">
-                        <option value="all">Semua Bulan</option>
-                        <option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option>
-                        <option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option>
-                        <option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option>
-                        <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
-                    </select>
-                </div>
-                <div style="flex: 1; min-width: 140px;">
-                    <label style="font-size: 0.75rem; color: #555; margin-bottom: 2px;">Tahun:</label>
-                    <select id="filterYearSelect" onchange="processAndRenderStoreData()">
-                        <option value="all">Semua Tahun</option><option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
-                    </select>
-                </div>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; margin-bottom: 10px;">
-                <h3 id="tableSectionTitle" style="margin: 0;">📋 Riwayat Lengkap Tutup Buku Toko</h3>
-                <button id="resetFilterBtn" class="btn-cancel" style="display: none; width: auto; padding: 6px 12px; font-size: 0.85rem;" onclick="filterStoreHistory(null)">🔄 Tampilkan Semua Toko</button>
-            </div>
-
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr><th>Aksi / Edit</th><th>Riwayat Pengambilan</th><th>Tanggal & Waktu</th><th>Titik Toko</th><th>Total Komputer</th><th>Parkir</th><th>Debit</th><th>QRIS</th><th>Permen Fisik</th><th>Pengeluaran Toko</th></tr>
-                    </thead>
-                    <tbody id="storeClosingSummaryTableBody"></tbody>
-                </table>
-            </div>
+        <div class="summary-card" style="background: #e8f5e9; border-color: #a5d6a7;">
+            <h4 style="color: #1b5e20;">TOTAL PERMEN DIAMBIL</h4>
+            <p id="sumTotalPermen" style="color: #2e7d32;">Rp 0</p>
         </div>
     </div>
-</div>
 
-<!-- MODAL PIN & VERIFIKASI -->
-<div class="modal" id="pinModal">
-    <div class="modal-content" style="width: 320px;">
-        <h3 id="pinModalTitle">Masukkan PIN</h3>
-        <p style="font-size: 0.85rem; color: #666;" id="pinModalInfo"></p>
-        <input type="password" id="pinInputVal" placeholder="••••" maxlength="6" style="text-align: center; letter-spacing: 5px; font-size: 1.3rem; margin-bottom: 15px;" onkeydown="if(event.key==='Enter'){ verifyPinAction(); }">
-        <div class="modal-buttons">
-            <button class="btn-cancel" onclick="closePinModal()">Batal</button>
-            <button class="btn-submit" onclick="verifyPinAction()">Konfirmasi</button>
-        </div>
-    </div>
-</div>
-
-<!-- MODAL ALASAN HAPUS -->
-<div class="modal" id="deleteReasonModal">
-    <div class="modal-content" style="width: 360px;">
-        <h3>Alasan Penghapusan</h3>
-        <p style="font-size: 0.85rem; color: #666;">Masukkan alasan mengapa riwayat transaksi ini dihapus:</p>
-        <input type="hidden" id="modalDeleteTxId">
-        <div class="form-group">
-            <input type="text" id="deleteReasonInput" placeholder="Contoh: Salah nominal / Dobel input" style="font-size: 1rem;">
-        </div>
-        <div class="modal-buttons">
-            <button class="btn-cancel" onclick="document.getElementById('deleteReasonModal').style.display='none'">Batal</button>
-            <button class="btn-submit" onclick="confirmDeleteTransaction()" style="background:#c62828;">Hapus Permanen</button>
-        </div>
-    </div>
-</div>
-
-<!-- MODAL-MODAL LAINNYA -->
-<div class="modal" id="exchangeReceiveModal">
-    <div class="modal-content">
-        <h3>Terima Uang Utuh</h3>
-        <p style="font-size: 0.85rem; color: #666;" id="exchangeModalInfoLabel"></p>
-        <input type="hidden" id="modalExchangeTxId">
-        <div class="form-group">
-            <label>Rincian Pecahan:</label>
-            <table class="denom-input-table">
-                <thead><tr><th>Pecahan</th><th>Nominal (Rp)</th></tr></thead>
-                <tbody id="exchangeDenomTableBody"></tbody>
+    <!-- TABEL RIWAYAT DENGAN KOLOM PERIODE PENGAMBILAN PERMEN -->
+    <div class="card">
+        <h3>📋 Riwayat Laporan Toko & Periode Pengambilan Permen</h3>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Toko</th>
+                        <th>Tanggal Laporan</th>
+                        <th>Permen Fisik</th>
+                        <th>Parkir</th>
+                        <th>QRIS</th>
+                        <th>Debit</th>
+                        <th>Status Permen</th>
+                        <th>Riwayat Periode Pengambilan Permen</th>
+                    </tr>
+                </thead>
+                <tbody id="pusatTableBody">
+                    <tr><td colspan="8" style="text-align: center; color: #777;">Memuat data...</td></tr>
+                </tbody>
             </table>
         </div>
-        <div class="form-group"><label><b>Total Diterima</b></label><input type="text" id="exchangeTotalReceivedInput" readonly style="font-weight: bold; color: #2e7d32;"></div>
-        <div class="modal-buttons"><button class="btn-cancel" onclick="document.getElementById('exchangeReceiveModal').style.display='none'">Batal</button><button class="btn-submit" onclick="submitExchangeReceive()">Simpan</button></div>
-    </div>
-</div>
-
-<div class="modal" id="editTxModal">
-    <div class="modal-content">
-        <h3>Edit Transaksi Brankas</h3>
-        <input type="hidden" id="modalEditTxId">
-        <div class="form-group">
-            <label>Jenis Transaksi</label>
-            <select id="editTxType">
-                <option value="masuk">MASUK (+)</option>
-                <option value="keluar">KELUAR (-)</option>
-            </select>
-        </div>
-        <div class="form-group"><label>Keterangan</label><input type="text" id="editTxDescInput"></div>
-        <div class="form-group"><label>Tanggal (DD/MM/YYYY)</label><input type="text" id="editTxDateInput"></div>
-        <div class="form-group"><label>Waktu (HH:MM:SS)</label><input type="text" id="editTxTimeInput"></div>
-        <div class="modal-buttons"><button class="btn-cancel" onclick="document.getElementById('editTxModal').style.display='none'">Batal</button><button class="btn-submit" onclick="submitEditTransaction()">Simpan</button></div>
-    </div>
-</div>
-
-<div class="modal" id="editStoreModal">
-    <div class="modal-content" style="width: 420px; text-align: left;">
-        <h3 style="text-align: center;">Edit Riwayat Tutup Buku</h3>
-        <input type="hidden" id="modalEditStoreId">
-        <div class="form-group"><label>Debit (Rp)</label><input type="text" id="editDebitInput" inputmode="numeric"></div>
-        <div class="form-group"><label>QRIS (Rp)</label><input type="text" id="editQrisInput" inputmode="numeric"></div>
-        <div class="form-group"><label>Permen Fisik (Rp)</label><input type="text" id="editPhysInput" inputmode="numeric"></div>
-        <div class="form-group"><label>Pengeluaran Toko</label><input type="text" id="editExpenseInput"></div>
-        <div class="form-group"><label>Parkir (Rp)</label><input type="text" id="editParkInput" inputmode="numeric"></div>
-        <div class="modal-buttons"><button class="btn-cancel" onclick="document.getElementById('editStoreModal').style.display='none'">Batal</button><button class="btn-submit" onclick="submitEditStoreRecord()">Simpan</button></div>
-    </div>
-</div>
-
-<div class="modal" id="linkModal">
-    <div class="modal-content">
-        <h3>Tautan Akses & QR Code</h3>
-        <input type="text" id="appUrlInput" readonly style="font-size: 0.85rem; text-align: center; margin-bottom: 10px; background: #f1f3f5; font-weight: bold;">
-        <div id="qrcodeContainer" style="display: flex; justify-content: center; margin-bottom: 15px;"></div>
-        <button class="btn-cancel" onclick="document.getElementById('linkModal').style.display='none'">Tutup</button>
     </div>
 </div>
 
@@ -457,980 +150,125 @@
         measurementId: "G-X3Z7GVB39Z"
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
     const db = firebase.database();
+    let allClosingsData = [];
 
-    let vaults = [
-        { id: 'b1', name: 'Brankas Gudang', pin: '1234', isUnlocked: false },
-        { id: 'b2', name: 'Brankas Permen Tukar', pin: '5678', isUnlocked: false },
-        { id: 'b3', name: 'Brankas Kamar', pin: '0000', isUnlocked: false }
-    ];
-    let masterPin = '9999';
-    let transactions = [];
-    let deletionLogs = [];
-    let storeClosings = [];
-    let operationalExpenses = [];
-    let activeTabVaultId = 'b1';
-    let isAuditTrailUnlocked = false;
-    let selectedStoreFilter = null;
-    let pendingPinCallback = null;
-    let currentChartMode = 'mingguan';
-    let storeNames = ['AWW Sambi', 'AWW Beji', 'AWW Bandung', 'AWW Trenggalek', 'AWW Ponorogo'];
-
-    const standardDenominations = [
-        { key: 'receh', label: 'Receh', emoji: '🪙', color: '#795548', bg: '#efebe9' },
-        { key: '1000_2000', label: 'Rp1.000 & Rp2.000', emoji: '💵', color: '#00838f', bg: '#e0f7fa' },
-        { key: '5000', label: 'Rp5.000', emoji: '💵', color: '#6a1b9a', bg: '#f3e5f5' },
-        { key: '10000', label: 'Rp10.000', emoji: '💵', color: '#ad1457', bg: '#fce4ec' },
-        { key: '20000', label: 'Rp20.000', emoji: '💵', color: '#2e7d32', bg: '#e8f5e9' },
-        { key: '50000', label: 'Rp50.000', emoji: '💵', color: '#1565c0', bg: '#e3f2fd' },
-        { key: '75000', label: 'Rp75.000', emoji: '✨💵', color: '#e65100', bg: '#fff3e0' },
-        { key: '100000', label: 'Rp100.000', emoji: '🔥💵', color: '#c62828', bg: '#ffebee' }
-    ];
-    const exchangeDenominations = [
-        { key: 'receh', label: 'Receh', emoji: '🪙', color: '#795548', bg: '#efebe9' },
-        { key: '1000_2000', label: 'Rp1.000 & Rp2.000', emoji: '💵', color: '#00838f', bg: '#e0f7fa' },
-        { key: '5000', label: 'Rp5.000', emoji: '💵', color: '#6a1b9a', bg: '#f3e5f5' },
-        { key: '10000', label: 'Rp10.000', emoji: '💵', color: '#ad1457', bg: '#fce4ec' },
-        { key: '20000', label: 'Rp20.000', emoji: '💵', color: '#2e7d32', bg: '#e8f5e9' },
-        { key: '50000_100000', label: 'Rp50.000 & Rp100.000', emoji: '🔥💵', color: '#c62828', bg: '#ffebee' },
-        { key: '75000', label: 'Rp75.000', emoji: '✨💵', color: '#e65100', bg: '#fff3e0' }
-    ];
-    function getActiveDenominations(vaultId) { return vaultId === 'b2' ? exchangeDenominations : standardDenominations; }
-
-    auth.onAuthStateChanged(user => {
-        if (user) {
+    function handlePusatLogin() {
+        let pin = document.getElementById('loginPinInput').value.trim();
+        // Master PIN Owner / Pusat
+        if (pin === '123123' || pin === '945336') {
             document.getElementById('loginCard').style.display = 'none';
             document.getElementById('appContainer').style.display = 'block';
-            loadCloudData();
+            loadPusatData();
         } else {
-            document.getElementById('loginCard').style.display = 'block';
-            document.getElementById('appContainer').style.display = 'none';
+            document.getElementById('loginError').innerText = 'PIN Master Salah!';
+            document.getElementById('loginPinInput').value = '';
         }
-    });
-
-    function handleLogin(e) {
-        e.preventDefault();
-        const email = document.getElementById('loginEmail').value;
-        const pass = document.getElementById('loginPassword').value;
-        auth.signInWithEmailAndPassword(email, pass)
-            .catch(err => { document.getElementById('loginError').innerText = err.message; });
     }
-    function handleLogout() { auth.signOut(); }
 
-    function loadCloudData() {
-        db.ref('vaults_data').on('value', snapshot => {
-            const data = snapshot.val();
-            if (data) {
-                if (data.vaults) {
-                    vaults.forEach(v => {
-                        let found = data.vaults.find(fv => fv.id === v.id);
-                        if (found && found.pin) v.pin = found.pin;
-                    });
-                }
-                if (data.masterPin) masterPin = data.masterPin;
-                transactions = data.transactions || [];
-                deletionLogs = data.deletionLogs || [];
-            }
-            renderAll();
-        });
+    function handlePusatLogout() {
+        document.getElementById('loginCard').style.display = 'block';
+        document.getElementById('appContainer').style.display = 'none';
+        document.getElementById('loginPinInput').value = '';
+    }
 
+    function loadPusatData() {
         db.ref('store_closings').on('value', snapshot => {
-            storeClosings = snapshot.val() || [];
-            processAndRenderStoreData();
-            renderMonthlyRecap();
-        });
-
-        db.ref('operational_expenses').on('value', snapshot => {
-            operationalExpenses = snapshot.val() || [];
-            renderMonthlyRecap();
-        });
-
-        const now = new Date();
-        document.getElementById('recapMonthSelect').value = String(now.getMonth() + 1).padStart(2, '0');
-        document.getElementById('recapYearSelect').value = String(now.getFullYear());
-    }
-
-    function syncToCloud() {
-        db.ref('vaults_data').set({
-            vaults: vaults.map(({id, name, pin}) => ({id, name, pin})),
-            masterPin,
-            transactions,
-            deletionLogs
+            let val = snapshot.val() || [];
+            allClosingsData = Array.isArray(val) ? val : Object.values(val);
+            renderDashboardData();
         });
     }
 
-    function requestUnlockAllVaults() {
-        promptPin('Buka Semua Akses', 'Masukkan Master PIN untuk membuka seluruh brankas dan Audit Trail sekaligus:', (pin) => {
-            if (pin === masterPin) {
-                vaults.forEach(v => v.isUnlocked = true);
-                isAuditTrailUnlocked = true;
-                renderAll();
-                return true;
-            }
-            return false;
-        });
+    function formatRp(num) {
+        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num || 0);
     }
 
-    function requestUnlockAuditTrail() {
-        promptPin('Buka Keamanan Audit Trail', 'Masukkan Master PIN untuk melihat riwayat penghapusan:', (pin) => {
-            if (pin === masterPin) {
-                isAuditTrailUnlocked = true;
-                renderAll();
-                return true;
-            }
-            return false;
-        });
-    }
+    function renderDashboardData() {
+        let month = parseInt(document.getElementById('filterMonth').value);
+        let year = parseInt(document.getElementById('filterYear').value);
+        let storeFilter = document.getElementById('filterStore').value;
 
-    function switchSlide(num) {
-        document.getElementById('slide1').className = num === 1 ? 'slide-section active' : 'slide-section';
-        document.getElementById('slide2').className = num === 2 ? 'slide-section active' : 'slide-section';
-        document.getElementById('navSlide1').className = num === 1 ? 'main-nav-btn active' : 'main-nav-btn';
-        document.getElementById('navSlide2').className = num === 2 ? 'main-nav-btn active' : 'main-nav-btn';
-        if (num === 2) renderMonthlyRecap();
-    }
-
-    function requestSlide2() {
-        let exchangeVault = vaults.find(v => v.id === 'b2');
-        let exchangePin = exchangeVault ? exchangeVault.pin : '5678';
-
-        promptPin('Verifikasi Akses Slide 2', 'Masukkan PIN Brankas Permen Tukar atau Master PIN:', (pin) => {
-            if (pin === masterPin || pin === exchangePin) {
-                switchSlide(2);
-                return true;
-            }
-            return false;
-        });
-    }
-
-    function formatNumber(num) { return isNaN(num) ? '' : new Intl.NumberFormat('id-ID').format(num); }
-    function parseCleanNumber(str) { return !str ? 0 : parseFloat(str.toString().replace(/\./g, '').replace(/,/g, '')) || 0; }
-    function formatRp(num) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num); }
-    
-    function formatShortRp(num) {
-        if (num >= 1e9) return (num / 1e9).toFixed(1) + ' M';
-        if (num >= 1e6) return (num / 1e6).toFixed(1) + ' Jt';
-        if (num >= 1e3) return (num / 1e3).toFixed(0) + ' Rb';
-        return num;
-    }
-
-    function promptPin(title, info, callback) {
-        document.getElementById('pinModalTitle').innerText = title;
-        document.getElementById('pinModalInfo').innerText = info;
-        document.getElementById('pinInputVal').value = '';
-        pendingPinCallback = callback;
-        document.getElementById('pinModal').style.display = 'flex';
-        setTimeout(() => document.getElementById('pinInputVal').focus(), 100);
-    }
-    function closePinModal() { document.getElementById('pinModal').style.display = 'none'; pendingPinCallback = null; }
-    function verifyPinAction() {
-        let val = document.getElementById('pinInputVal').value.trim();
-        if (pendingPinCallback && pendingPinCallback(val)) {
-            closePinModal();
-        } else {
-            alert('PIN Salah!');
-            document.getElementById('pinInputVal').value = '';
-        }
-    }
-
-    function toggleVaultUnlock(vaultId) {
-        let vault = vaults.find(v => v.id === vaultId);
-        if (vault.isUnlocked) {
-            vault.isUnlocked = false;
-            if (!vaults.some(v => v.isUnlocked)) isAuditTrailUnlocked = false;
-            renderAll();
-        } else {
-            promptPin(`Buka Brankas: ${vault.name}`, 'Masukkan PIN brankas atau Master PIN:', (enteredPin) => {
-                if (enteredPin === vault.pin || enteredPin === masterPin) {
-                    vault.isUnlocked = true;
-                    if (enteredPin === masterPin) {
-                        vaults.forEach(v => v.isUnlocked = true);
-                        isAuditTrailUnlocked = true;
-                    }
-                    renderAll();
-                    return true;
-                }
-                return false;
-            });
-        }
-    }
-
-    function renderDenomInputTable() {
-        const tbody = document.getElementById('denomInputTableBody');
-        if (!tbody) return;
+        let tbody = document.getElementById('pusatTableBody');
         tbody.innerHTML = '';
-        let currentVaultId = document.getElementById('vaultSelect').value || activeTabVaultId;
-        getActiveDenominations(currentVaultId).forEach(d => {
-            tbody.innerHTML += `<tr><td style="font-weight:bold;">${d.label}</td><td><input type="text" class="denom-direct-amount" inputmode="numeric" data-key="${d.key}" value="0" oninput="onDirectAmountInput(this)"></td></tr>`;
-        });
-        tbody.innerHTML += `<tr style="background:#fff8e1;"><td style="font-weight:bold; color:#b71c1c;">Permen Rusak Mix</td><td><input type="text" id="rusakMixInput" inputmode="numeric" value="0" oninput="onDirectAmountInput(this)"></td></tr>`;
-        calculateTotalFormAmount();
-    }
 
-    function onDirectAmountInput(el) {
-        let val = parseCleanNumber(el.value);
-        el.value = val > 0 ? formatNumber(val) : '0';
-        calculateTotalFormAmount();
-    }
+        let totalIncomeSum = 0;
+        let totalPermenSum = 0;
+        let filteredLogs = [];
 
-    function calculateTotalFormAmount() {
-        let total = 0;
-        document.querySelectorAll('.denom-direct-amount').forEach(i => total += parseCleanNumber(i.value));
-        const rusak = document.getElementById('rusakMixInput');
-        if (rusak) total += parseCleanNumber(rusak.value);
-        document.getElementById('grandAmountInput').value = formatNumber(total);
-    }
+        allClosingsData.forEach(item => {
+            if (!item) return;
+            
+            // Validasi filter toko
+            if (storeFilter !== 'ALL' && item.storePoint !== storeFilter) return;
 
-    function saveTransaction(e) {
-        e.preventDefault();
-        const vaultId = document.getElementById('vaultSelect').value;
-        const vault = vaults.find(v => v.id === vaultId);
-        if (!vault.isUnlocked) {
-            alert('Brankas terkunci! Buka brankas dengan PIN terlebih dahulu.');
-            return;
-        }
-
-        const type = document.getElementById('typeSelect').value;
-        const amount = parseCleanNumber(document.getElementById('grandAmountInput').value);
-        if (amount <= 0) { alert('Nominal harus > 0'); return; }
-
-        const details = [];
-        document.querySelectorAll('.denom-direct-amount').forEach(i => {
-            let val = parseCleanNumber(i.value);
-            if (val > 0) details.push({ denomKey: i.dataset.key, amount: val });
-        });
-        const rusakVal = parseCleanNumber(document.getElementById('rusakMixInput').value);
-        if (rusakVal > 0) details.push({ denomKey: 'rusak', amount: rusakVal, isRusak: true });
-
-        const rawDate = document.getElementById('transDateInput').value;
-        const now = rawDate ? new Date(rawDate) : new Date();
-
-        transactions.push({
-            id: Date.now(),
-            vaultId,
-            type,
-            amount,
-            details,
-            exchangeStatus: (vaultId === 'b2' && type === 'keluar') ? 'belum' : 'sudah',
-            receivedDetails: [],
-            totalReceived: 0,
-            description: document.getElementById('descInput').value,
-            date: now.toLocaleDateString('id-ID'),
-            time: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-            monthYear: new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(now)
-        });
-
-        syncToCloud();
-        renderDenomInputTable();
-        document.getElementById('descInput').value = '';
-        document.getElementById('transDateInput').value = '';
-        alert('Transaksi berhasil disimpan!');
-    }
-
-    function renderAll() {
-        const vaultContainer = document.getElementById('vaultContainer');
-        const vaultSelect = document.getElementById('vaultSelect');
-        const currentSelected = vaultSelect ? vaultSelect.value : '';
-        if (vaultContainer) vaultContainer.innerHTML = '';
-        if (vaultSelect) vaultSelect.innerHTML = '';
-
-        let grandTotal = 0;
-        let allUnlocked = true;
-
-        vaults.forEach(v => {
-            let balance = 0;
-            transactions.forEach(tx => {
-                if (tx.vaultId === v.id) {
-                    if (v.id === 'b2' && tx.type === 'keluar') {
-                        balance -= tx.amount;
-                        if (tx.exchangeStatus === 'sudah') balance += (tx.totalReceived || tx.amount);
-                    } else {
-                        balance += (tx.type === 'masuk' ? tx.amount : -tx.amount);
+            // Validasi filter bulan & tahun berdasarkan tanggal laporan
+            let matchMonthYear = false;
+            let dateStr = item.date || '';
+            if (dateStr) {
+                let parts = dateStr.split('/');
+                if (parts.length === 3) {
+                    let dYear = parseInt(parts[2]);
+                    let dMonth = parseInt(parts[1]) - 1;
+                    if (dYear === year && dMonth === month) {
+                        matchMonthYear = true;
                     }
                 }
-            });
-            grandTotal += balance;
-            if (!v.isUnlocked) allUnlocked = false;
-
-            if (vaultContainer) {
-                let btnText = v.isUnlocked ? '🔒 Kunci Kembali' : '🔑 Masukkan PIN';
-                let btnClass = v.isUnlocked ? 'pin-btn unlocked' : 'pin-btn';
-                let balanceDisplay = v.isUnlocked ? formatRp(balance) : 'Rp ••••••••';
-                vaultContainer.innerHTML += `
-                    <div class="vault-card">
-                        <h4>${v.name}</h4>
-                        <div class="balance">${balanceDisplay}</div>
-                        <button class="${btnClass}" onclick="toggleVaultUnlock('${v.id}')">${btnText}</button>
-                    </div>`;
             }
-            if (vaultSelect) vaultSelect.innerHTML += `<option value="${v.id}">${v.name}</option>`;
-        });
 
-        if (vaultSelect && currentSelected) vaultSelect.value = currentSelected;
-        else if (vaultSelect && vaultSelect.options.length > 0 && !vaultSelect.value) vaultSelect.value = activeTabVaultId;
+            if (matchMonthYear) {
+                filteredLogs.push(item);
+                let qris = parseFloat(item.qris || 0);
+                let debit = parseFloat(item.debit || 0);
+                let cash = parseFloat(item.physicalCash || 0);
+                let parkir = parseFloat(item.parking || 0);
 
-        document.getElementById('grandTotalTitle').innerText = allUnlocked ? 'Total Saldo Keseluruhan (Terbuka Penuh)' : 'Total Saldo Keseluruhan (Terkunci Sebagian)';
-        document.getElementById('grandTotalBalanceContainer').innerText = allUnlocked ? formatRp(grandTotal) : 'Rp •••••••• (Buka Semua PIN)';
-        
-        renderDenomInputTable();
-        renderTabs();
-        renderTransactions();
-        renderDenomSummary();
-        renderMonthlySummary();
-        renderAuditTrail();
-    }
-
-    function renderTabs() {
-        const dContainer = document.getElementById('denomTabContainer');
-        const hContainer = document.getElementById('historyTabContainer');
-        if (dContainer) dContainer.innerHTML = '';
-        if (hContainer) hContainer.innerHTML = '';
-
-        vaults.forEach(v => {
-            let cls = v.id === activeTabVaultId ? 'tab-btn active' : 'tab-btn';
-            if (dContainer) dContainer.innerHTML += `<button class="${cls}" onclick="switchTabAndSelectVault('${v.id}')">${v.name}</button>`;
-            if (hContainer) hContainer.innerHTML += `<button class="${cls}" onclick="switchTabAndSelectVault('${v.id}')">${v.name}</button>`;
-        });
-        if (hContainer) {
-            hContainer.innerHTML += `<button class="tab-btn master-tab ${activeTabVaultId==='all'?'active':''}" onclick="switchTab('all')">⭐ Semua Brankas</button>`;
-        }
-    }
-
-    function switchTab(id) { activeTabVaultId = id; renderAll(); }
-    function switchTabAndSelectVault(vaultId) {
-        switchTab(vaultId);
-        const vaultSelect = document.getElementById('vaultSelect');
-        if (vaultSelect) { vaultSelect.value = vaultId; renderDenomInputTable(); }
-    }
-
-    function renderDenomSummary() {
-        const container = document.getElementById('denomSummaryContent');
-        if (!container) return;
-        const vault = vaults.find(v => v.id === activeTabVaultId);
-        if (!vault || !vault.isUnlocked) {
-            container.innerHTML = `<p style="text-align:center; color:#c62828;">Brankas terkunci. Masukkan PIN brankas untuk melihat rincian.</p>`;
-            return;
-        }
-
-        let activeDenoms = getActiveDenominations(vault.id);
-        let gridHtml = `<div class="denom-summary-grid">`;
-        const totals = {};
-        activeDenoms.forEach(d => totals[d.key] = 0);
-        let totalRusakMix = 0;
-
-        transactions.forEach(tx => {
-            if (tx.vaultId === vault.id) {
-                if (tx.type === 'masuk' && tx.details) {
-                    tx.details.forEach(d => { if (d.isRusak) totalRusakMix += d.amount; else if (totals.hasOwnProperty(d.denomKey)) totals[d.denomKey] += d.amount; });
-                } else if (tx.type === 'keluar' && tx.details) {
-                    tx.details.forEach(d => { if (d.isRusak) totalRusakMix -= d.amount; else if (totals.hasOwnProperty(d.denomKey)) totals[d.denomKey] -= d.amount; });
-                }
-                if (vault.id === 'b2' && tx.type === 'keluar' && tx.exchangeStatus === 'sudah' && tx.receivedDetails) {
-                    tx.receivedDetails.forEach(d => { if (d.isRusak) totalRusakMix += d.amount; else if (totals.hasOwnProperty(d.denomKey)) totals[d.denomKey] += d.amount; });
+                totalIncomeSum += (qris + debit + cash + parkir);
+                if (item.isCollected) {
+                    totalPermenSum += cash;
                 }
             }
         });
 
-        activeDenoms.forEach(d => {
-            gridHtml += `<div class="denom-summary-card" style="border-top: 4px solid ${d.color};"><div class="denom-badge">${d.emoji}</div><h5 style="color: ${d.color};">${d.label}</h5><div style="font-weight: bold; color: ${totals[d.key] < 0 ? '#c62828' : '#2e7d32'};">${formatRp(totals[d.key])}</div></div>`;
-        });
-        gridHtml += `<div class="denom-summary-card" style="border-top: 4px solid #b71c1c;"><div class="denom-badge">⚠️</div><h5 style="color: #b71c1c;">Permen Rusak Mix</h5><div style="font-weight: bold; color: #b71c1c;">${formatRp(totalRusakMix)}</div></div></div>`;
-        container.innerHTML = gridHtml;
-    }
+        document.getElementById('sumTotalIncome').innerText = formatRp(totalIncomeSum);
+        document.getElementById('sumTotalPermen').innerText = formatRp(totalPermenSum);
 
-    function renderMonthlySummary() {
-        const cur = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date());
-        document.getElementById('currentMonthLabel').innerText = cur;
-        let html = `<table><thead><tr><th>Brankas</th><th>Total Masuk</th><th>Total Keluar</th><th>Selisih (Net)</th></tr></thead><tbody>`;
-        vaults.forEach(v => {
-            if (!v.isUnlocked) {
-                html += `<tr><td>${v.name}</td><td colspan="3" style="color:#c62828; text-align:center;">Terkunci (Masukkan PIN)</td></tr>`;
-                return;
-            }
-            let m = 0, k = 0;
-            transactions.forEach(tx => {
-                if (tx.vaultId === v.id && tx.monthYear === cur) {
-                    if (tx.type === 'masuk') m += tx.amount;
-                    else if (tx.type === 'keluar') k += tx.amount;
-                }
-            });
-            let net = m - k;
-            html += `<tr><td>${v.name}</td><td class="masuk">+${formatRp(m)}</td><td class="keluar">-${formatRp(k)}</td><td class="${net >= 0 ? 'masuk' : 'keluar'}">${net >= 0 ? '+' : ''}${formatRp(net)}</td></tr>`;
-        });
-        html += `</tbody></table>`;
-        document.getElementById('summaryContentArea').innerHTML = html;
-    }
-
-    function renderTransactions() {
-        const container = document.getElementById('historyContent');
-        if (!container) return;
-        
-        if (activeTabVaultId === 'all') {
-            let anyUnlocked = vaults.some(v => v.isUnlocked);
-            if (!anyUnlocked) {
-                container.innerHTML = `<p style="text-align:center; color:#c62828;">Riwayat semua brankas dikunci. Buka setidaknya satu brankas atau gunakan Master PIN untuk melihat riwayat keseluruhan.</p>`;
-                return;
-            }
-        } else {
-            let v = vaults.find(x => x.id === activeTabVaultId);
-            if (!v || !v.isUnlocked) {
-                container.innerHTML = `<p style="text-align:center; color:#c62828;">Brankas terkunci. Masukkan PIN untuk melihat riwayat transaksi.</p>`;
-                return;
-            }
-        }
-
-        const getVerticalDetails = (details) => {
-            if (!details || details.length === 0) return '-';
-            let html = `<div class="vertical-details">`;
-            details.forEach(d => {
-                html += `<div>• ${d.isRusak ? 'Rusak Mix' : d.denomKey}: <b>${formatRp(d.amount)}</b></div>`;
-            });
-            html += `</div>`;
-            return html;
-        };
-
-        if (activeTabVaultId === 'all') {
-            let html = `<table><thead><tr><th>Aksi</th><th>Brankas</th><th>Waktu</th><th>Jenis</th><th>Keterangan</th><th>Total</th><th>Rincian</th></tr></thead><tbody>`;
-            transactions.slice().reverse().forEach(tx => {
-                let vObj = vaults.find(v => v.id === tx.vaultId);
-                let canView = vObj && vObj.isUnlocked;
-                if (!canView) return;
-                html += `<tr>
-                    <td><button class="btn-edit" onclick="requestEditTx(${tx.id})">✏️</button><button class="btn-trash" onclick="requestDeleteTx(${tx.id})">🗑️</button></td>
-                    <td><b>${vObj ? vObj.name : ''}</b></td>
-                    <td>${tx.date} ${tx.time}</td>
-                    <td class="${tx.type}">${tx.type.toUpperCase()}</td>
-                    <td>${tx.description}</td>
-                    <td class="${tx.type}">${formatRp(tx.amount)}</td>
-                    <td>${getVerticalDetails(tx.details)}</td>
-                </tr>`;
-            });
-            html += `</tbody></table>`;
-            container.innerHTML = html;
+        if (filteredLogs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #777;">Tidak ada data pada periode ini.</td></tr>`;
             return;
         }
 
-        let isB2 = (activeTabVaultId === 'b2');
-        let html = `<table><thead><tr><th>Aksi</th><th>Waktu</th>${isB2?'<th>Status</th>':''}<th>Jenis</th><th>Keterangan</th><th>Total</th><th>Rincian</th></tr></thead><tbody>`;
-        let filtered = transactions.filter(t => t.vaultId === activeTabVaultId);
-        filtered.slice().reverse().forEach(tx => {
-            let statusTd = '';
-            if (isB2 && tx.type === 'keluar') {
-                statusTd = tx.exchangeStatus === 'sudah' ? 
-                    `<td><button onclick="openExchangeModal(${tx.id})" style="padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; background: #c8e6c9; color: #2e7d32;">🟢 Diterima</button></td>` : 
-                    `<td><button onclick="openExchangeModal(${tx.id})" style="padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; background: #ffcdd2; color: #c62828;">🔴 Belum</button></td>`;
-            } else if (isB2) { statusTd = `<td>-</td>`; }
+        filteredLogs.sort((a, b) => b.id - a.id);
 
-            html += `<tr>
-                <td><button class="btn-edit" onclick="requestEditTx(${tx.id})">✏️</button><button class="btn-trash" onclick="requestDeleteTx(${tx.id})">🗑️</button></td>
-                <td>${tx.date} ${tx.time}</td>${statusTd}
-                <td class="${tx.type}">${tx.type.toUpperCase()}</td>
-                <td>${tx.description}</td>
-                <td class="${tx.type}">${tx.type==='masuk'?'+':'-'}${formatRp(tx.amount)}</td>
-                <td>${getVerticalDetails(tx.details)}</td>
-            </tr>`;
-        });
-        html += `</tbody></table>`;
-        container.innerHTML = html;
-    }
+        filteredLogs.forEach(i => {
+            let statusBadge = i.isCollected ? 
+                `<span style="color: #2e7d32;"><b>✔ Sudah Diambil</b><br><small>Oleh: ${i.collectorName || 'Pusat'}</small></span>` : 
+                `<span style="color: #c62828;"><b>❌ Belum Diambil</b></span>`;
 
-    function requestEditTx(txId) {
-        promptPin('Verifikasi Keamanan Edit', 'Masukkan Master PIN atau PIN Brankas terkait:', (pin) => {
-            let tx = transactions.find(t => t.id === txId);
-            let vault = vaults.find(v => v.id === tx.vaultId);
-            if (pin === masterPin || pin === vault.pin) {
-                openEditTxModal(txId);
-                return true;
-            }
-            return false;
-        });
-    }
-
-    function requestDeleteTx(txId) {
-        let tx = transactions.find(t => t.id === txId);
-        let txVault = vaults.find(v => v.id === tx.vaultId);
-        let vaultName = txVault ? txVault.name : 'Brankas';
-
-        promptPin('Verifikasi Penghapusan', `Masukkan Master PIN atau PIN ${vaultName} untuk menghapus:`, (pin) => {
-            if (pin === masterPin || (txVault && pin === txVault.pin)) {
-                window.activeDeletingVaultName = vaultName;
-                document.getElementById('modalDeleteTxId').value = txId;
-                document.getElementById('deleteReasonInput').value = '';
-                document.getElementById('deleteReasonModal').style.display = 'flex';
-                setTimeout(() => document.getElementById('deleteReasonInput').focus(), 100);
-                return true;
-            }
-            return false;
-        });
-    }
-
-    function confirmDeleteTransaction() {
-        let txId = parseInt(document.getElementById('modalDeleteTxId').value);
-        let reason = document.getElementById('deleteReasonInput').value.trim();
-        if (!reason) { alert('Alasan penghapusan wajib diisi!'); return; }
-
-        let tx = transactions.find(t => t.id === txId);
-        if (tx) {
-            let now = new Date();
-            let vaultSource = window.activeDeletingVaultName || 'Brankas';
-            deletionLogs.push({ ...tx, vaultSource, reason, deletedAt: `${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID')}` });
-            transactions = transactions.filter(t => t.id !== txId);
-            syncToCloud();
-            document.getElementById('deleteReasonModal').style.display = 'none';
-            alert('Transaksi berhasil dihapus dan dicatat di Audit Trail.');
-        }
-    }
-
-    function openExchangeModal(txId) {
-        let tx = transactions.find(t => t.id === txId);
-        if (!tx) return;
-        document.getElementById('modalExchangeTxId').value = tx.id;
-        document.getElementById('exchangeModalInfoLabel').innerText = `${tx.description} (${formatRp(tx.amount)})`;
-        const tbody = document.getElementById('exchangeDenomTableBody');
-        tbody.innerHTML = '';
-        getActiveDenominations('b2').forEach(d => {
-            let found = tx.receivedDetails ? tx.receivedDetails.find(rd => rd.denomKey === d.key && !rd.isRusak) : null;
-            tbody.innerHTML += `<tr><td>${d.label}</td><td><input type="text" class="exchange-denom-input" inputmode="numeric" data-key="${d.key}" value="${formatNumber(found ? found.amount : 0)}" oninput="calculateExchangeTotal()"></td></tr>`;
-        });
-        let foundRusak = tx.receivedDetails ? tx.receivedDetails.find(rd => rd.isRusak) : null;
-        tbody.innerHTML += `<tr style="background:#fff8e1;"><td style="color:#b71c1c; font-weight:bold;">Permen Rusak Mix</td><td><input type="text" id="exchangeRusakInput" inputmode="numeric" value="${formatNumber(foundRusak ? foundRusak.amount : 0)}" oninput="calculateExchangeTotal()"></td></tr>`;
-        calculateExchangeTotal();
-        document.getElementById('exchangeReceiveModal').style.display = 'flex';
-    }
-    function calculateExchangeTotal() {
-        let total = 0;
-        document.querySelectorAll('.exchange-denom-input').forEach(i => total += parseCleanNumber(i.value));
-        let rusak = document.getElementById('exchangeRusakInput');
-        if (rusak) total += parseCleanNumber(rusak.value);
-        document.getElementById('exchangeTotalReceivedInput').value = formatNumber(total);
-    }
-    function submitExchangeReceive() {
-        let txId = parseInt(document.getElementById('modalExchangeTxId').value);
-        let totalReceived = parseCleanNumber(document.getElementById('exchangeTotalReceivedInput').value);
-        const receivedDetails = [];
-        document.querySelectorAll('.exchange-denom-input').forEach(input => {
-            let amount = parseCleanNumber(input.value);
-            if (amount > 0) receivedDetails.push({ denomKey: input.dataset.key, amount });
-        });
-        let rusakAmount = parseCleanNumber(document.getElementById('exchangeRusakInput').value);
-        if (rusakAmount > 0) receivedDetails.push({ denomKey: 'rusak', amount: rusakAmount, isRusak: true });
-
-        transactions = transactions.map(t => t.id === txId ? { ...t, exchangeStatus: 'sudah', totalReceived, receivedDetails } : t);
-        syncToCloud();
-        document.getElementById('exchangeReceiveModal').style.display = 'none';
-        alert('Berhasil diperbarui!');
-    }
-
-    function openEditTxModal(txId) {
-        let tx = transactions.find(t => t.id === txId);
-        if (!tx) return;
-        document.getElementById('modalEditTxId').value = tx.id;
-        document.getElementById('editTxType').value = tx.type;
-        document.getElementById('editTxDescInput').value = tx.description;
-        document.getElementById('editTxDateInput').value = tx.date;
-        document.getElementById('editTxTimeInput').value = tx.time || '';
-        document.getElementById('editTxModal').style.display = 'flex';
-    }
-    function submitEditTransaction() {
-        let txId = parseInt(document.getElementById('modalEditTxId').value);
-        let type = document.getElementById('editTxType').value;
-        let description = document.getElementById('editTxDescInput').value.trim();
-        let date = document.getElementById('editTxDateInput').value.trim();
-        let time = document.getElementById('editTxTimeInput').value.trim();
-        transactions = transactions.map(tx => tx.id === txId ? { ...tx, type, description, date, time } : tx);
-        syncToCloud();
-        document.getElementById('editTxModal').style.display = 'none';
-        alert('Transaksi diperbarui!');
-    }
-
-    function renderAuditTrail() {
-        const tbody = document.getElementById('auditTrailTableBody');
-        const unlockBtn = document.getElementById('unlockAuditBtn');
-        if (!tbody) return;
-
-        if (!isAuditTrailUnlocked) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #c62828;">🔒 Audit Trail Dikunci. Masukkan Master PIN untuk membuka.</td></tr>`;
-            if (unlockBtn) unlockBtn.style.display = 'inline-block';
-            return;
-        }
-
-        if (unlockBtn) unlockBtn.style.display = 'none';
-        tbody.innerHTML = '';
-        if (deletionLogs.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #777;">Belum ada riwayat penghapusan.</td></tr>`;
-            return;
-        }
-        deletionLogs.slice().reverse().forEach(log => {
-            let sourceLabel = log.vaultSource || 'Brankas';
-            tbody.innerHTML += `<tr>
-                <td>${log.deletedAt}</td>
-                <td><b style="color:#1565c0;">${sourceLabel}</b></td>
-                <td class="${log.type}">${log.type.toUpperCase()}</td>
-                <td class="${log.type}">${formatRp(log.amount)}</td>
-                <td>${log.description}</td>
-                <td style="color: #c62828; font-weight: bold;">${log.reason}</td>
-            </tr>`;
-        });
-    }
-
-    function setChartMode(mode) {
-        currentChartMode = mode;
-        document.getElementById('modeMingguan').className = mode === 'mingguan' ? 'chart-mode-btn active' : 'chart-mode-btn';
-        document.getElementById('modeBulanan').className = mode === 'bulanan' ? 'chart-mode-btn active' : 'chart-mode-btn';
-        document.getElementById('modeTahunan').className = mode === 'tahunan' ? 'chart-mode-btn active' : 'chart-mode-btn';
-        processAndRenderStoreData();
-    }
-
-    function processAndRenderStoreData() {
-        const container = document.getElementById('storeColumnsContainer');
-        if (!container) return;
-        container.innerHTML = '';
-        const m = document.getElementById('filterMonthSelect').value;
-        const y = document.getElementById('filterYearSelect').value;
-
-        let baseFilteredLogs = storeClosings.filter(item => {
-            if (!item.date) return false;
-            let parts = item.date.split('/');
-            if (parts.length < 3) return false;
-            return (m === 'all' || parts[1] === m) && (y === 'all' || parts[2] === y);
-        });
-
-        let chartLogs = [...baseFilteredLogs];
-        const nowTimestamp = new Date().getTime();
-
-        if (currentChartMode === 'mingguan') {
-            const sevenDaysAgo = nowTimestamp - (7 * 24 * 60 * 60 * 1000);
-            chartLogs = chartLogs.filter(item => {
-                let parts = item.date.split('/');
-                if (parts.length < 3) return false;
-                let itemDate = new Date(parts[2], parts[1] - 1, parts[0]).getTime();
-                return itemDate >= sevenDaysAgo && itemDate <= nowTimestamp;
-            });
-        } else if (currentChartMode === 'tahunan') {
-            chartLogs = storeClosings.filter(item => {
-                if (!item.date) return false;
-                let parts = item.date.split('/');
-                if (parts.length < 3) return false;
-                return (y === 'all' || parts[2] === y);
-            });
-        }
-
-        let grandComp = 0, grandPark = 0, uncolCash = 0, uncolPark = 0;
-        let storeStatsMap = {};
-        storeNames.forEach(store => {
-            storeStatsMap[store] = { comp: 0, park: 0, debit: 0, qris: 0, phys: 0, uncollectedPhys: 0, count: 0 };
-        });
-
-        baseFilteredLogs.forEach(i => {
-            if (storeNames.includes(i.storePoint)) {
-                let comp = i.computerOmset || ((i.debit || 0) + (i.qris || 0) + (i.physicalCash || 0));
-                let park = i.parking || 0;
-                let phys = i.physicalCash || 0;
-
-                storeStatsMap[i.storePoint].comp += comp;
-                storeStatsMap[i.storePoint].park += park;
-                storeStatsMap[i.storePoint].debit += (i.debit || 0);
-                storeStatsMap[i.storePoint].qris += (i.qris || 0);
-                storeStatsMap[i.storePoint].phys += phys;
-                if (!i.isCollected) {
-                    storeStatsMap[i.storePoint].uncollectedPhys += phys;
-                }
-                storeStatsMap[i.storePoint].count++;
-
-                grandComp += comp;
-                grandPark += park;
-                if (!i.isCollected) {
-                    uncolCash += phys;
-                    uncolPark += park;
-                }
-            }
-        });
-
-        let chartStatsMap = {};
-        storeNames.forEach(store => {
-            chartStatsMap[store] = { comp: 0, park: 0 };
-        });
-
-        chartLogs.forEach(i => {
-            if (storeNames.includes(i.storePoint)) {
-                let comp = i.computerOmset || ((i.debit || 0) + (i.qris || 0) + (i.physicalCash || 0));
-                let park = i.parking || 0;
-                chartStatsMap[i.storePoint].comp += comp;
-                chartStatsMap[i.storePoint].park += park;
-            }
-        });
-
-        // Render Kartu Kolom Toko (Menampilkan Informasi Fisik Belum Diambil/Di Toko)
-        storeNames.forEach(store => {
-            let data = storeStatsMap[store];
-            let activeClass = selectedStoreFilter === store ? 'active-filter' : '';
-            container.innerHTML += `
-                <div class="store-column-card ${activeClass}" onclick="filterStoreHistory('${store}')">
-                    <h4>${store}</h4>
-                    <div class="store-stat-item"><label>Omset Komputer:</label><span>${formatRp(data.comp)}</span></div>
-                    <div class="store-stat-item"><label>Debit:</label><span>${formatRp(data.debit)}</span></div>
-                    <div class="store-stat-item"><label>QRIS:</label><span>${formatRp(data.qris)}</span></div>
-                    <div class="store-stat-item"><label>Total Fisik Masuk:</label><span>${formatRp(data.phys)}</span></div>
-                    <div class="store-stat-item" style="background: #fff8e1; padding: 3px 4px; border-radius: 4px; margin: 4px 0;"><label style="color: #b71c1c;">Fisik Belum Diambil (Di Toko):</label><span style="color: #c62828;">${formatRp(data.uncollectedPhys)}</span></div>
-                    <div class="store-stat-item"><label>Parkir:</label><span>${formatRp(data.park)}</span></div>
-                    <div class="store-stat-item" style="border-top:1px dashed #ddd; margin-top:5px; padding-top:3px;"><span style="color:#1565c0;">${data.count} Laporan</span></div>
-                </div>`;
-        });
-
-        document.getElementById('grandTotalStoreComputer').innerText = formatRp(grandComp);
-        document.getElementById('grandTotalStoreParking').innerText = formatRp(grandPark);
-        document.getElementById('grandTotalUncollectedCash').innerText = formatRp(uncolCash);
-        document.getElementById('grandTotalUncollectedParking').innerText = formatRp(uncolPark);
-
-        renderVerticalCharts(chartStatsMap);
-        renderStoreClosingsTable(baseFilteredLogs);
-    }
-
-    function renderVerticalCharts(statsMap) {
-        const compContainer = document.getElementById('storeCompChartArea');
-        const parkContainer = document.getElementById('storeParkChartArea');
-        if (!compContainer || !parkContainer) return;
-
-        let maxComp = 1, maxPark = 1;
-        storeNames.forEach(store => {
-            if (statsMap[store].comp > maxComp) maxComp = statsMap[store].comp;
-            if (statsMap[store].park > maxPark) maxPark = statsMap[store].park;
-        });
-
-        let compHtml = '', parkHtml = '';
-
-        storeNames.forEach(store => {
-            let data = statsMap[store];
-            let compHeight = maxComp > 0 ? Math.max(12, (data.comp / maxComp) * 160) : 12;
-            let parkHeight = maxPark > 0 ? Math.max(12, (data.park / maxPark) * 160) : 12;
-            
-            let shortName = store.replace('AWW ', '');
-
-            compHtml += `
-                <div class="chart-col">
-                    <div class="chart-val-label">${formatShortRp(data.comp)}</div>
-                    <div class="chart-bar-vert comp" style="height: ${compHeight}px;" title="${store}: ${formatRp(data.comp)}"></div>
-                    <div class="chart-x-label" title="${store}">${shortName}</div>
-                </div>`;
-
-            parkHtml += `
-                <div class="chart-col">
-                    <div class="chart-val-label">${formatShortRp(data.park)}</div>
-                    <div class="chart-bar-vert park" style="height: ${parkHeight}px;" title="${store}: ${formatRp(data.park)}"></div>
-                    <div class="chart-x-label" title="${store}">${shortName}</div>
-                </div>`;
-        });
-
-        compContainer.innerHTML = compHtml;
-        parkContainer.innerHTML = parkHtml;
-    }
-
-    function filterStoreHistory(store) {
-        selectedStoreFilter = store;
-        processAndRenderStoreData();
-    }
-
-    function renderStoreClosingsTable(filteredLogs) {
-        let tbody = document.getElementById('storeClosingSummaryTableBody');
-        let titleElem = document.getElementById('tableSectionTitle');
-        let resetBtn = document.getElementById('resetFilterBtn');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-
-        let displayed = selectedStoreFilter ? filteredLogs.filter(i => i.storePoint === selectedStoreFilter) : filteredLogs;
-        
-        displayed.sort((a, b) => {
-            let parseDt = (item) => {
-                let dParts = (item.date || '').split('/');
-                let tParts = (item.time || '00:00:00').split(':');
-                if (dParts.length < 3) return 0;
-                return new Date(dParts[2], dParts[1] - 1, dParts[0], tParts[0] || 0, tParts[1] || 0, tParts[2] || 0).getTime();
-            };
-            return parseDt(b) - parseDt(a);
-        });
-
-        if (selectedStoreFilter) {
-            titleElem.innerText = `📋 Riwayat Tutup Buku: ${selectedStoreFilter}`;
-            resetBtn.style.display = 'inline-block';
-        } else {
-            titleElem.innerText = `📋 Riwayat Lengkap Tutup Buku Toko`;
-            resetBtn.style.display = 'none';
-        }
-
-        if (displayed.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #777;">Belum ada data rekap tutup buku.</td></tr>`;
-            return;
-        }
-
-        displayed.forEach(i => {
-            let collectionInfo = i.isCollected ? `<div style="font-size:0.8rem; color:#2e7d32; font-weight:bold;">✔ Diambil (${i.collectorName || 'Pusat'})<br>${i.collectionDate || '-'}</div>` : `<div style="font-size:0.8rem; color:#c62828; font-weight:bold;">✖ Belum Diambil</div>`;
-            
-            let expenseFormatted = '-';
-            if (i.expenseDesc && i.expenseDesc !== '-') {
-                let rawText = i.expenseDesc;
-                let expenses = rawText.includes('|') ? rawText.split('|').map(e => e.trim()) : rawText.split(',').map(e => e.trim());
-                expenseFormatted = `<div class="vertical-details">`;
-                expenses.forEach(exp => {
-                    if (exp) expenseFormatted += `<div>• ${exp}</div>`;
-                });
-                expenseFormatted += `</div>`;
+            // FITUR BARU: Kolom khusus menampilkan rentang tanggal / periode pengambilan permen
+            let candyPeriodCol = '-';
+            if (i.isCollected) {
+                let ambilTgl = i.collectionDate ? i.collectionDate.split(' ')[0] : (i.date || '-');
+                candyPeriodCol = `<span style="color: #0d47a1; font-weight: bold;">📅 Tanggal Permen: ${i.date}</span><br><small style="color: #555;">Ambil pada: ${ambilTgl}</small>`;
+            } else {
+                candyPeriodCol = `<span style="color: #777; font-style: italic;">Permen tertanggal <b>${i.date}</b> belum ditarik</span>`;
             }
 
             tbody.innerHTML += `<tr>
-                <td><button class="btn-edit" onclick="requestEditStore(${i.id})">✏️</button><button class="btn-trash" onclick="requestDeleteStore(${i.id})">🗑️</button></td>
-                <td>${collectionInfo}</td>
-                <td>${i.date} ${i.time}</td>
-                <td><b>${i.storePoint}</b></td>
-                <td style="color:#0d47a1; font-weight:bold;">${formatRp(i.computerOmset || ((i.debit||0)+(i.qris||0)+(i.physicalCash||0)))}</td>
-                <td>${formatRp(i.parking||0)}</td>
-                <td>${formatRp(i.debit||0)}</td>
-                <td>${formatRp(i.qris||0)}</td>
-                <td>${formatRp(i.physicalCash||0)}</td>
-                <td>${expenseFormatted}</td>
+                <td><b>${i.storePoint || '-'}</b></td>
+                <td>${i.date || '-'}</td>
+                <td style="color: #2e7d32; font-weight: bold;">${formatRp(i.physicalCash)}</td>
+                <td style="color: #00796b;">${formatRp(i.parking)}</td>
+                <td style="color: #6a1b9a;">${formatRp(i.qris)}</td>
+                <td style="color: #1565c0;">${formatRp(i.debit)}</td>
+                <td>${statusBadge}</td>
+                <td style="background: #f1f8e9;">${candyPeriodCol}</td>
             </tr>`;
         });
     }
-
-    function renderMonthlyRecap() {
-        let m = document.getElementById('recapMonthSelect').value;
-        let y = document.getElementById('recapYearSelect').value;
-
-        let storePhys = 0, storeDebit = 0, storeQris = 0, storePark = 0;
-        storeClosings.forEach(item => {
-            if (!item.date) return;
-            let parts = item.date.split('/');
-            if (parts.length < 3) return;
-            if (parts[1] === m && parts[2] === y) {
-                storePhys += (item.physicalCash || 0);
-                storeDebit += (item.debit || 0);
-                storeQris += (item.qris || 0);
-                storePark += (item.parking || 0);
-            }
-        });
-        let totalStoreIncome = storePhys + storeDebit + storeQris + storePark;
-
-        let opOutTunai = 0, opOutTransfer = 0;
-        let catSummary = {};
-        operationalExpenses.forEach(i => {
-            if (!i.date) return;
-            let monthMatch = false, yearMatch = false;
-            if (i.date.includes('/')) {
-                let parts = i.date.split('/');
-                if (parts.length >= 3) {
-                    monthMatch = (parts[1] === m);
-                    yearMatch = (parts[2].substring(0, 4) === y);
-                }
-            } else if (i.rawDate) {
-                let parts = i.rawDate.split('-');
-                if (parts.length >= 3) {
-                    monthMatch = (parts[1] === m);
-                    yearMatch = (parts[0] === y);
-                }
-            }
-
-            if (monthMatch && yearMatch) {
-                let effectiveNominal = (i.nominal || 0) - (i.sisaSetoran || 0);
-                if (effectiveNominal > 0) {
-                    if (i.method === 'Tunai') opOutTunai += effectiveNominal;
-                    else opOutTransfer += effectiveNominal;
-
-                    let cKey = i.category || 'Lainnya';
-                    catSummary[cKey] = (catSummary[cKey] || 0) + effectiveNominal;
-                }
-            }
-        });
-
-        let totalOpExpense = opOutTunai + opOutTransfer;
-        let netRecap = totalStoreIncome - totalOpExpense;
-
-        document.getElementById('recapStoreIncome').innerText = formatRp(totalStoreIncome);
-        document.getElementById('recapOpExpense').innerText = formatRp(totalOpExpense);
-        document.getElementById('recapNetBalance').innerText = formatRp(netRecap);
-        document.getElementById('recapNetBalance').style.color = netRecap >= 0 ? '#1565c0' : '#c62828';
-
-        document.getElementById('storeIncomeDetailBox').innerHTML = `
-            • Permen Fisik: <b>${formatRp(storePhys)}</b><br>
-            • Kartu Debit: <b>${formatRp(storeDebit)}</b><br>
-            • QRIS: <b>${formatRp(storeQris)}</b><br>
-            • Parkir: <b>${formatRp(storePark)}</b><br>
-            <hr style="border:0; border-top:1px dashed #ccc; margin:8px 0;">
-            <b>Total Pemasukan Toko: ${formatRp(totalStoreIncome)}</b>
-        `;
-
-        let catHtml = '';
-        for (let key in catSummary) {
-            catHtml += `• ${key}: <b>${formatRp(catSummary[key])}</b><br>`;
-        }
-        if (!catHtml) catHtml = '<i>Belum ada pengeluaran operasional di bulan ini.</i>';
-
-        document.getElementById('opExpenseDetailBox').innerHTML = `
-            ${catHtml}
-            <hr style="border:0; border-top:1px dashed #ccc; margin:8px 0;">
-            • Pembayaran Tunai: <b>${formatRp(opOutTunai)}</b><br>
-            • Pembayaran Transfer: <b>${formatRp(opOutTransfer)}</b><br>
-            <b>Total Pengeluaran: ${formatRp(totalOpExpense)}</b>
-        `;
-    }
-
-    function requestEditStore(id) {
-        promptPin('Verifikasi Keamanan Toko', 'Masukkan Master PIN untuk mengedit rekap toko:', (pin) => {
-            if (pin === masterPin) {
-                openEditStoreModal(id);
-                return true;
-            }
-            return false;
-        });
-    }
-
-    function requestDeleteStore(id) {
-        promptPin('Verifikasi Keamanan Toko', 'Masukkan Master PIN untuk menghapus rekap toko:', (pin) => {
-            if (pin === masterPin) {
-                storeClosings = storeClosings.filter(i => i.id !== id);
-                db.ref('store_closings').set(storeClosings);
-                alert('Rekap toko berhasil dihapus.');
-                return true;
-            }
-            return false;
-        });
-    }
-
-    function openEditStoreModal(id) {
-        let item = storeClosings.find(i => i.id === id);
-        if (!item) return;
-        document.getElementById('modalEditStoreId').value = id;
-        document.getElementById('editDebitInput').value = item.debit || 0;
-        document.getElementById('editQrisInput').value = item.qris || 0;
-        document.getElementById('editPhysInput').value = item.physicalCash || 0;
-        document.getElementById('editExpenseInput').value = item.expenseDesc || '';
-        document.getElementById('editParkInput').value = item.parking || 0;
-        document.getElementById('editStoreModal').style.display = 'flex';
-    }
-    function submitEditStoreRecord() {
-        let id = parseInt(document.getElementById('modalEditStoreId').value);
-        let debit = parseCleanNumber(document.getElementById('editDebitInput').value);
-        let qris = parseCleanNumber(document.getElementById('editQrisInput').value);
-        let phys = parseCleanNumber(document.getElementById('editPhysInput').value);
-        let comp = debit + qris + phys;
-        let expense = document.getElementById('editExpenseInput').value.trim();
-        let park = parseCleanNumber(document.getElementById('editParkInput').value);
-
-        storeClosings = storeClosings.map(i => i.id === id ? { ...i, debit, qris, physicalCash: phys, computerOmset: comp, expenseDesc: expense||'-', parking: park } : i);
-        db.ref('store_closings').set(storeClosings);
-        document.getElementById('editStoreModal').style.display = 'none';
-    }
-
-    function openLinkModal() {
-        document.getElementById('linkModal').style.display = 'flex';
-        const url = window.location.href;
-        document.getElementById('appUrlInput').value = url;
-        document.getElementById('qrcodeContainer').innerHTML = '';
-        new QRCode(document.getElementById('qrcodeContainer'), { text: url, width: 140, height: 140 });
-    }
-
-    function exportToExcel() { alert('Export Excel aktif'); }
-    function exportToPDF() { alert('Export PDF aktif'); }
 </script>
 </body>
 </html>
