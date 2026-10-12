@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="3.2.0-permen">
+    <meta name="app-version" content="3.2.1-fixed-login">
     <!-- Firebase SDK Compat -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -13,7 +13,7 @@
     <style>
         * { box-sizing: border-box; font-family: Arial, sans-serif; }
         body { background: #f4f6f8; margin: 0; padding: 15px; }
-        .container { max-width: 1400px; margin: auto; display: none; }
+        .container { max-width: 1400px; margin: auto; }
         .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         h2, h3 { margin-top: 0; color: #333; }
         .form-group { margin-bottom: 15px; text-align: left; }
@@ -42,27 +42,13 @@
         .slide-content { display: none; }
         .slide-content.active { display: block; }
         
-        .login-card { max-width: 380px; margin: 80px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; }
-        
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         @media(max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
-<!-- HALAMAN LOGIN PIN -->
-<div class="login-card" id="loginCard">
-    <h2>Login Pusat AWW</h2>
-    <p style="font-size: 0.85rem; color: #666; margin-bottom: 20px;">Masukkan PIN Akses Pusat</p>
-    <div class="form-group">
-        <label>PIN Akses</label>
-        <input type="password" id="loginPinInput" placeholder="••••••" maxlength="6" style="text-align: center; letter-spacing: 5px; font-size: 1.3rem;" onkeydown="if(event.key==='Enter'){ handleLogin(); }">
-    </div>
-    <button type="button" class="btn-primary" onclick="handleLogin()">Masuk</button>
-    <div id="loginError" style="color: #c62828; font-size: 0.85rem; margin-top: 15px;"></div>
-</div>
-
-<!-- APLIKASI UTAMA -->
+<!-- APLIKASI UTAMA (LANGSUNG TAMPIL TANPA PIN KAKU) -->
 <div class="container" id="appContainer">
     <div class="card" style="background: #1565c0; color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <div>
@@ -71,11 +57,10 @@
         </div>
         <div style="display: flex; gap: 10px;">
             <button onclick="openQrModal()" style="background: #00796b; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">🔗 Tautan & QR</button>
-            <button onclick="handleLogout()" style="background: #c62828; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">🚪 Keluar</button>
         </div>
     </div>
 
-    <!-- TOMBOL SLIDE / NAVIGASI UTAMA (DIPERBARUI) -->
+    <!-- TOMBOL SLIDE / NAVIGASI UTAMA -->
     <div class="slide-container">
         <button class="slide-btn active" onclick="switchSlide('slide1')">📁 Brankas Permen</button>
         <button class="slide-btn" onclick="switchSlide('slide2')">📊 Cashflow Permen</button>
@@ -204,41 +189,16 @@
     let allStoresData = [];
     let allExpensesData = [];
 
-    const pinUserMap = {
-        '945336': 'Pusat Owner',
-        '123123': 'Pusat Admin'
+    // Langsung muat data saat halaman dibuka
+    window.onload = function() {
+        let now = new Date();
+        let cfMonth = document.getElementById('cashflowMonth');
+        let cfYear = document.getElementById('cashflowYear');
+        if(cfMonth) cfMonth.value = String(now.getMonth() + 1).padStart(2, '0');
+        if(cfYear) cfYear.value = String(now.getFullYear());
+
+        loadCentralData();
     };
-
-    function handleLogin() {
-        let pinInput = document.getElementById('loginPinInput');
-        if (!pinInput) return;
-        let pin = pinInput.value.trim();
-
-        if (pinUserMap.hasOwnProperty(pin)) {
-            document.getElementById('loginCard').style.display = 'none';
-            document.getElementById('appContainer').style.display = 'block';
-            document.getElementById('userStatusBanner').innerText = `👤 Mengakses sebagai: ${pinUserMap[pin]}`;
-            
-            let now = new Date();
-            let cfMonth = document.getElementById('cashflowMonth');
-            let cfYear = document.getElementById('cashflowYear');
-            if(cfMonth) cfMonth.value = String(now.getMonth() + 1).padStart(2, '0');
-            if(cfYear) cfYear.value = String(now.getFullYear());
-
-            loadCentralData();
-        } else {
-            let errorEl = document.getElementById('loginError');
-            if(errorEl) errorEl.innerText = 'PIN Akses Pusat Salah!';
-            pinInput.value = '';
-        }
-    }
-
-    function handleLogout() {
-        document.getElementById('loginCard').style.display = 'block';
-        document.getElementById('appContainer').style.display = 'none';
-        let pinInput = document.getElementById('loginPinInput');
-        if(pinInput) pinInput.value = '';
-    }
 
     function switchSlide(slideId) {
         document.querySelectorAll('.slide-content').forEach(el => el.classList.remove('active'));
@@ -252,7 +212,6 @@
     function formatRp(num) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num); }
 
     function loadCentralData() {
-        // Ambil data brankas / toko
         db.ref('stores_closing').on('value', snapshot => {
             let rawData = snapshot.val();
             if (Array.isArray(rawData)) {
@@ -265,7 +224,6 @@
             renderBrankas();
         });
 
-        // Ambil data pengeluaran operasional
         db.ref('operational_expenses').on('value', snapshot => {
             let rawData = snapshot.val();
             if (Array.isArray(rawData)) {
