@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="9.72.0-checkpoint-pusat-clean">
+    <meta name="app-version" content="9.74.0-checkpoint-pusat-edit-nominal">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -307,8 +307,9 @@
                             <th>Aksi / Edit</th>
                             <th>Titik Toko</th>
                             <th>Tanggal & Waktu</th>
-                            <th>Permen Fisik</th>
+                            <th>Omset Komputer</th>
                             <th>Parkir</th>
+                            <th>Permen Fisik</th>
                             <th>QRIS</th>
                             <th>Debit</th>
                             <th>Pengeluaran Toko</th>
@@ -369,6 +370,7 @@
     </div>
 </div>
 
+<!-- MODAL EDIT TRANSAKSI BRANKAS (DIPERBARUI DENGAN FITUR NOMINAL) -->
 <div class="modal" id="editTxModal">
     <div class="modal-content">
         <h3>Edit Transaksi Brankas</h3>
@@ -379,6 +381,10 @@
                 <option value="masuk">MASUK (+)</option>
                 <option value="keluar">KELUAR (-)</option>
             </select>
+        </div>
+        <div class="form-group">
+            <label>Nominal Total (Rp)</label>
+            <input type="text" id="editTxAmountInput" inputmode="numeric" placeholder="0" oninput="formatInputNumber(this)" style="font-weight: bold; color: #2e7d32;">
         </div>
         <div class="form-group"><label>Keterangan</label><input type="text" id="editTxDescInput"></div>
         <div class="form-group"><label>Tanggal (DD/MM/YYYY)</label><input type="text" id="editTxDateInput"></div>
@@ -571,6 +577,7 @@
     function formatNumber(num) { return isNaN(num) ? '' : new Intl.NumberFormat('id-ID').format(num); }
     function parseCleanNumber(str) { return !str ? 0 : parseFloat(str.toString().replace(/\./g, '').replace(/,/g, '')) || 0; }
     function formatRp(num) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num); }
+    function formatInputNumber(el) { el.value = parseCleanNumber(el.value) > 0 ? formatNumber(parseCleanNumber(el.value)) : ''; }
 
     function promptPin(title, info, callback) {
         document.getElementById('pinModalTitle').innerText = title;
@@ -984,21 +991,30 @@
         if (!tx) return;
         document.getElementById('modalEditTxId').value = tx.id;
         document.getElementById('editTxType').value = tx.type;
+        document.getElementById('editTxAmountInput').value = formatNumber(tx.amount || 0);
         document.getElementById('editTxDescInput').value = tx.description;
         document.getElementById('editTxDateInput').value = tx.date;
         document.getElementById('editTxTimeInput').value = tx.time || '';
         document.getElementById('editTxModal').style.display = 'flex';
     }
+
     function submitEditTransaction() {
         let txId = parseInt(document.getElementById('modalEditTxId').value);
         let type = document.getElementById('editTxType').value;
+        let amount = parseCleanNumber(document.getElementById('editTxAmountInput').value);
         let description = document.getElementById('editTxDescInput').value.trim();
         let date = document.getElementById('editTxDateInput').value.trim();
         let time = document.getElementById('editTxTimeInput').value.trim();
-        transactions = transactions.map(tx => tx.id === txId ? { ...tx, type, description, date, time } : tx);
+
+        if (amount <= 0) {
+            alert('Nominal harus lebih besar dari 0!');
+            return;
+        }
+
+        transactions = transactions.map(tx => tx.id === txId ? { ...tx, type, amount, description, date, time } : tx);
         syncToCloud();
         document.getElementById('editTxModal').style.display = 'none';
-        alert('Transaksi diperbarui!');
+        alert('Transaksi berhasil diperbarui!');
     }
 
     function renderAuditTrail() {
@@ -1133,7 +1149,7 @@
         }
 
         if (displayed.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #777;">Belum ada data rekap tutup buku.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #777;">Belum ada data rekap tutup buku.</td></tr>`;
             return;
         }
 
@@ -1153,12 +1169,15 @@
                 expenseFormatted += `</div>`;
             }
 
+            let omsetKomputerHarian = (i.physicalCash || 0) + (i.qris || 0) + (i.debit || 0);
+
             tbody.innerHTML += `<tr>
                 <td><button class="btn-edit" onclick="requestEditStore(${i.id})">✏️</button><button class="btn-trash" onclick="requestDeleteStore(${i.id})">🗑️</button></td>
                 <td><b>${i.storePoint}</b></td>
                 <td>${i.date} ${i.time}</td>
-                <td style="color: #2e7d32; font-weight: bold;">${formatRp(i.physicalCash||0)}</td>
+                <td style="color: #1565c0; font-weight: bold;">${formatRp(omsetKomputerHarian)}</td>
                 <td style="color: #00796b;">${formatRp(i.parking||0)}</td>
+                <td style="color: #2e7d32; font-weight: bold;">${formatRp(i.physicalCash||0)}</td>
                 <td style="color: #6a1b9a;">${formatRp(i.qris||0)}</td>
                 <td style="color: #1565c0;">${formatRp(i.debit||0)}</td>
                 <td>${expenseFormatted}</td>
