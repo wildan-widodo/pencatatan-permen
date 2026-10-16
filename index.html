@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="3.3.0-checkpoint-permen">
+    <meta name="app-version" content="3.4.0-checkpoint-permen">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -35,7 +35,7 @@
         .vault-card .pin-btn.unlocked { background: #2e7d32; }
 
         .filter-bar { background: #f1f3f5; padding: 12px; border-radius: 6px; margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-        .filter-bar select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.95rem; width: auto; flex: 1; }
+        .filter-bar select, .filter-bar input { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.95rem; width: auto; flex: 1; }
 
         .store-columns-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
         .store-column-card { background: #f8f9fa; border: 1px solid #dcdcdc; border-top: 4px solid #00796b; padding: 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
@@ -89,6 +89,23 @@
         .masuk { color: #2e7d32; font-weight: bold; }
         .keluar { color: #c62828; font-weight: bold; }
         .vertical-details { font-size: 0.8rem; line-height: 1.4; white-space: normal; min-width: 220px; }
+
+        /* Styling Tambahan untuk Peringkat (Ranking) */
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: white;
+            background: #78909c;
+        }
+        .rank-1 { background: #ffd700; color: #333; text-shadow: 0 1px 0 rgba(255,255,255,0.5); box-shadow: 0 2px 5px rgba(255,215,0,0.5); }
+        .rank-2 { background: #c0c0c0; color: #333; box-shadow: 0 2px 5px rgba(192,192,192,0.5); }
+        .rank-3 { background: #cd7f32; color: white; box-shadow: 0 2px 5px rgba(205,127,50,0.5); }
     </style>
 </head>
 <body>
@@ -121,7 +138,7 @@
         </div>
     </div>
 
-    <!-- TOMBOL SLIDE / NAVIGASI UTAMA (DIPERBARUI) -->
+    <!-- TOMBOL SLIDE / NAVIGASI UTAMA -->
     <div class="main-nav">
         <button class="main-nav-btn active" id="navSlide1" onclick="switchSlide(1)">📁 Brankas Permen</button>
         <button class="main-nav-btn" id="navSlide2" onclick="requestSlide2()">📊 Cashflow Permen</button>
@@ -260,6 +277,34 @@
                     <h4 style="margin-top: 0; color: #c62828; border-bottom: 2px solid #ffcdd2; padding-bottom: 5px;">🔴 Rincian Pengeluaran Operasional (Bulan Ini)</h4>
                     <div id="opExpenseDetailBox" style="font-size: 0.9rem; line-height: 1.6;">Memuat data...</div>
                 </div>
+            </div>
+        </div>
+
+        <!-- BAGIAN BARU: RANKING OMSET & PARKIR HARIAN ANTAR TOKO -->
+        <div class="card" style="border-top: 4px solid #f57c00; margin-bottom: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin: 0; color: #e65100;">🏆 Ranking Omset & Parkir Toko (Berdasarkan Tanggal)</h3>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <label style="font-size: 0.85rem; margin: 0;">Pilih Tanggal:</label>
+                    <input type="date" id="rankingDateInput" onchange="renderStoreRanking()" style="padding: 6px; font-size: 0.9rem; width: auto;">
+                </div>
+            </div>
+            <p style="font-size: 0.85rem; color: #666; margin-top: 0; margin-bottom: 15px;">Perbandingan performa penjualan harian dan kontribusi parkir antar titik toko pada tanggal yang dipilih:</p>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="text-align: center; width: 60px;">Peringkat</th>
+                            <th>Titik Toko</th>
+                            <th>Omset Komputer</th>
+                            <th>Pendapatan Parkir</th>
+                            <th>Total Pendapatan Harian</th>
+                        </tr>
+                    </thead>
+                    <tbody id="storeRankingTableBody">
+                        <tr><td colspan="5" style="text-align: center; color: #777;">Memuat data ranking...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -510,6 +555,7 @@
             storeClosings = snapshot.val() || [];
             processAndRenderStoreData();
             renderMonthlyRecap();
+            renderStoreRanking();
         });
 
         db.ref('operational_expenses').on('value', snapshot => {
@@ -520,6 +566,15 @@
         const now = new Date();
         document.getElementById('recapMonthSelect').value = String(now.getMonth() + 1).padStart(2, '0');
         document.getElementById('recapYearSelect').value = String(now.getFullYear());
+        
+        // Set tanggal default untuk ranking harian ke hari ini (YYYY-MM-DD)
+        let year = now.getFullYear();
+        let month = String(now.getMonth() + 1).padStart(2, '0');
+        let day = String(now.getDate()).padStart(2, '0');
+        const rankingInput = document.getElementById('rankingDateInput');
+        if (rankingInput) {
+            rankingInput.value = `${year}-${month}-${day}`;
+        }
     }
 
     function syncToCloud() {
@@ -559,7 +614,10 @@
         document.getElementById('slide2').className = num === 2 ? 'slide-section active' : 'slide-section';
         document.getElementById('navSlide1').className = num === 1 ? 'main-nav-btn active' : 'main-nav-btn';
         document.getElementById('navSlide2').className = num === 2 ? 'main-nav-btn active' : 'main-nav-btn';
-        if (num === 2) renderMonthlyRecap();
+        if (num === 2) {
+            renderMonthlyRecap();
+            renderStoreRanking();
+        }
     }
 
     function requestSlide2() {
@@ -1115,6 +1173,66 @@
         document.getElementById('grandTotalUncollectedParking').innerText = formatRp(uncolPark);
 
         renderStoreClosingsTable(baseFilteredLogs);
+    }
+
+    /* FUNGSI BARU: RENDER RANKING OMSET & PARKIR HARIAN ANTAR TOKO */
+    function renderStoreRanking() {
+        const tbody = document.getElementById('storeRankingTableBody');
+        const dateInput = document.getElementById('rankingDateInput');
+        if (!tbody || !dateInput) return;
+
+        let selectedVal = dateInput.value; // Format: YYYY-MM-DD
+        if (!selectedVal) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #777;">Pilih tanggal terlebih dahulu untuk melihat ranking.</td></tr>`;
+            return;
+        }
+
+        // Konversi YYYY-MM-DD ke DD/MM/YYYY agar cocok dengan format date yang disimpan di storeClosings
+        let p = selectedVal.split('-');
+        if (p.length < 3) return;
+        let formattedSearchDate = `${p[2]}/${p[1]}/${p[0]}`;
+
+        // Kumpulkan data per toko untuk tanggal tersebut
+        let storeDataMap = {};
+        storeNames.forEach(store => {
+            storeDataMap[store] = { storeName: store, compOmset: 0, parking: 0, totalDaily: 0, hasReport: false };
+        });
+
+        storeClosings.forEach(item => {
+            if (item.date === formattedSearchDate && storeNames.includes(item.storePoint)) {
+                let comp = item.computerOmset || ((item.debit || 0) + (item.qris || 0) + (item.physicalCash || 0));
+                let park = item.parking || 0;
+                storeDataMap[item.storePoint].compOmset += comp;
+                storeDataMap[item.storePoint].parking += park;
+                storeDataMap[item.storePoint].totalDaily += (comp + park);
+                storeDataMap[item.storePoint].hasReport = true;
+            }
+        });
+
+        let rankingList = Object.values(storeDataMap);
+        // Urutkan dari total pendapatan harian tertinggi ke terendah
+        rankingList.sort((a, b) => b.totalDaily - a.totalDaily);
+
+        tbody.innerHTML = '';
+        rankingList.forEach((data, index) => {
+            let rankNum = index + 1;
+            let badgeClass = 'rank-badge';
+            if (rankNum === 1) badgeClass += ' rank-1';
+            else if (rankNum === 2) badgeClass += ' rank-2';
+            else if (rankNum === 3) badgeClass += ' rank-3';
+
+            let reportStatusStyle = data.hasReport ? '' : 'color: #9e9e9e; font-style: italic;';
+            let reportLabel = data.hasReport ? '' : '<br><small>(Belum Ada Tutup Buku)</small>';
+
+            tbody.innerHTML += `
+                <tr style="${reportStatusStyle}">
+                    <td style="text-align: center;"><span class="${badgeClass}">${rankNum}</span></td>
+                    <td><b>${data.storeName}</b>${reportLabel}</td>
+                    <td style="color: #1565c0; font-weight: bold;">${formatRp(data.compOmset)}</td>
+                    <td style="color: #00796b; font-weight: bold;">${formatRp(data.parking)}</td>
+                    <td style="color: #2e7d32; font-weight: bold; font-size: 1.05rem;">${formatRp(data.totalDaily)}</td>
+                </tr>`;
+        });
     }
 
     function filterStoreHistory(store) {
