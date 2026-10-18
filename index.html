@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="3.4.0-checkpoint-permen">
+    <meta name="app-version" content="3.5.0-charts-pdf">
+    <!-- Library PDF, QR Code, & Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -90,7 +93,6 @@
         .keluar { color: #c62828; font-weight: bold; }
         .vertical-details { font-size: 0.8rem; line-height: 1.4; white-space: normal; min-width: 220px; }
 
-        /* Styling Tambahan untuk Peringkat (Ranking) */
         .rank-badge {
             display: inline-flex;
             align-items: center;
@@ -106,6 +108,10 @@
         .rank-1 { background: #ffd700; color: #333; text-shadow: 0 1px 0 rgba(255,255,255,0.5); box-shadow: 0 2px 5px rgba(255,215,0,0.5); }
         .rank-2 { background: #c0c0c0; color: #333; box-shadow: 0 2px 5px rgba(192,192,192,0.5); }
         .rank-3 { background: #cd7f32; color: white; box-shadow: 0 2px 5px rgba(205,127,50,0.5); }
+
+        /* Container Grafik */
+        .chart-container-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 20px; }
+        .chart-card { background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
@@ -278,6 +284,18 @@
                     <div id="opExpenseDetailBox" style="font-size: 0.9rem; line-height: 1.6;">Memuat data...</div>
                 </div>
             </div>
+
+            <!-- FITUR BARU 1: GRAFIK VISUALISASI INTERAKTIF (CHART.JS) -->
+            <div class="chart-container-box">
+                <div class="chart-card">
+                    <h4 style="margin-top:0; text-align:center; color:#333; font-size:0.95rem;">Perbandingan Pemasukan vs Pengeluaran</h4>
+                    <div style="position: relative; height: 220px;"><canvas id="cashflowPieChart"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <h4 style="margin-top:0; text-align:center; color:#333; font-size:0.95rem;">Komposisi Rincian Pemasukan Toko</h4>
+                    <div style="position: relative; height: 220px;"><canvas id="storeIncomeBarChart"></canvas></div>
+                </div>
+            </div>
         </div>
 
         <!-- BAGIAN BARU: RANKING OMSET & PARKIR HARIAN ANTAR TOKO -->
@@ -310,7 +328,12 @@
 
         <!-- BAGIAN 2: REKAP 5 TOKO -->
         <div class="card">
-            <h3 style="margin-bottom: 15px;">🏪 Ringkasan Omset, Permen Fisik & Parkir 5 Titik Toko AWW</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                <h3 style="margin: 0;">🏪 Ringkasan Omset, Permen Fisik & Parkir 5 Titik Toko AWW</h3>
+                <!-- FITUR BARU 2: TOMBOL EKSPOR PDF LAPORAN TUTUP BUKU TOKO -->
+                <button type="button" class="btn-pdf" onclick="exportStoreReportPDF()" style="width: auto; margin-top:0;">📄 Ekspor Laporan Toko (.PDF)</button>
+            </div>
+
             <div class="grand-store-summary">
                 <div><span>TOTAL OMSET</span><div id="grandTotalStoreComputer">Rp 0</div></div>
                 <div><span>TOTAL PARKIR</span><div id="grandTotalStoreParking" style="color: #2e7d32;">Rp 0</div></div>
@@ -493,6 +516,10 @@
     let pendingPinCallback = null;
     let storeNames = ['AWW Sambi', 'AWW Beji', 'AWW Bandung', 'AWW Trenggalek', 'AWW Ponorogo'];
 
+    // Variabel Global untuk Chart.js
+    let cashflowPieChartInstance = null;
+    let storeIncomeBarChartInstance = null;
+
     const standardDenominations = [
         { key: 'receh', label: 'Receh', emoji: '🪙', color: '#795548', bg: '#efebe9' },
         { key: '1000_2000', label: 'Rp1.000 & Rp2.000', emoji: '💵', color: '#00838f', bg: '#e0f7fa' },
@@ -567,7 +594,6 @@
         document.getElementById('recapMonthSelect').value = String(now.getMonth() + 1).padStart(2, '0');
         document.getElementById('recapYearSelect').value = String(now.getFullYear());
         
-        // Set tanggal default untuk ranking harian ke hari ini (YYYY-MM-DD)
         let year = now.getFullYear();
         let month = String(now.getMonth() + 1).padStart(2, '0');
         let day = String(now.getDate()).padStart(2, '0');
@@ -1175,24 +1201,21 @@
         renderStoreClosingsTable(baseFilteredLogs);
     }
 
-    /* FUNGSI BARU: RENDER RANKING OMSET & PARKIR HARIAN ANTAR TOKO */
     function renderStoreRanking() {
         const tbody = document.getElementById('storeRankingTableBody');
         const dateInput = document.getElementById('rankingDateInput');
         if (!tbody || !dateInput) return;
 
-        let selectedVal = dateInput.value; // Format: YYYY-MM-DD
+        let selectedVal = dateInput.value;
         if (!selectedVal) {
             tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #777;">Pilih tanggal terlebih dahulu untuk melihat ranking.</td></tr>`;
             return;
         }
 
-        // Konversi YYYY-MM-DD ke DD/MM/YYYY agar cocok dengan format date yang disimpan di storeClosings
         let p = selectedVal.split('-');
         if (p.length < 3) return;
         let formattedSearchDate = `${p[2]}/${p[1]}/${p[0]}`;
 
-        // Kumpulkan data per toko untuk tanggal tersebut
         let storeDataMap = {};
         storeNames.forEach(store => {
             storeDataMap[store] = { storeName: store, compOmset: 0, parking: 0, totalDaily: 0, hasReport: false };
@@ -1210,7 +1233,6 @@
         });
 
         let rankingList = Object.values(storeDataMap);
-        // Urutkan dari total pendapatan harian tertinggi ke terendah
         rankingList.sort((a, b) => b.totalDaily - a.totalDaily);
 
         tbody.innerHTML = '';
@@ -1384,6 +1406,106 @@
             • Pembayaran Transfer: <b>${formatRp(opOutTransfer)}</b><br>
             <b>Total Pengeluaran: ${formatRp(totalOpExpense)}</b>
         `;
+
+        // Render Grafik Chart.js (Fitur Baru 1)
+        renderCharts(totalStoreIncome, totalOpExpense, storePhys, storeDebit, storeQris, storePark);
+    }
+
+    // FUNGSI RENDER GRAFIK CHART.JS (FITUR 1)
+    function renderCharts(totalIncome, totalExpense, phys, debit, qris, park) {
+        // Pie Chart: Pemasukan vs Pengeluaran
+        const ctxPie = document.getElementById('cashflowPieChart').getContext('2d');
+        if (cashflowPieChartInstance) cashflowPieChartInstance.destroy();
+        cashflowPieChartInstance = new Chart(ctxPie, {
+            type: 'doughnut',
+            data: {
+                labels: ['Total Pemasukan Toko', 'Total Pengeluaran Op.'],
+                datasets: [{
+                    data: [totalIncome, totalExpense],
+                    backgroundColor: ['#2e7d32', '#c62828'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+            }
+        });
+
+        // Bar Chart: Komposisi Pemasukan Toko
+        const ctxBar = document.getElementById('storeIncomeBarChart').getContext('2d');
+        if (storeIncomeBarChartInstance) storeIncomeBarChartInstance.destroy();
+        storeIncomeBarChartInstance = new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: ['Fisik', 'Debit', 'QRIS', 'Parkir'],
+                datasets: [{
+                    label: 'Nominal (Rp)',
+                    data: [phys, debit, qris, park],
+                    backgroundColor: ['#1565c0', '#00796b', '#6a1b9a', '#e65100'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } }
+            }
+        });
+    }
+
+    // FUNGSI EKSPOR LAPORAN TUTUP BUKU TOKO KE PDF (FITUR 2)
+    function exportStoreReportPDF() {
+        const { jsPDF } = window.jspdf;
+        let doc = new jsPDF('l', 'mm', 'a4');
+
+        doc.setFontSize(16);
+        doc.setTextColor(21, 101, 192);
+        doc.text("Laporan Rekapitulasi Tutup Buku 5 Titik Toko AWW", 14, 15);
+        
+        let m = document.getElementById('filterMonthSelect').value;
+        let y = document.getElementById('filterYearSelect').value;
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Periode Bulan: ${m} Tahun: ${y} | Dicetak pada: ${new Date().toLocaleDateString('id-ID')}`, 14, 22);
+
+        let baseFilteredLogs = storeClosings.filter(item => {
+            if (!item.date) return false;
+            let parts = item.date.split('/');
+            if (parts.length < 3) return false;
+            return (m === 'all' || parts[1] === m) && (y === 'all' || parts[2] === y);
+        });
+
+        let tableRows = [];
+        baseFilteredLogs.forEach((i, index) => {
+            let omsetKomputer = (i.physicalCash || 0) + (i.qris || 0) + (i.debit || 0);
+            let statusText = i.isCollected ? `Sudah Diambil (${i.collectorName || 'Pusat'})` : 'Belum Diambil';
+
+            tableRows.push([
+                index + 1,
+                i.storePoint || '-',
+                i.date + ' ' + (i.time || ''),
+                formatRp(omsetKomputer),
+                formatRp(i.parking || 0),
+                formatRp(i.physicalCash || 0),
+                formatRp(i.qris || 0),
+                formatRp(i.debit || 0),
+                statusText
+            ]);
+        });
+
+        doc.autoTable({
+            startY: 28,
+            head: [['No', 'Titik Toko', 'Waktu', 'Omset Komputer', 'Parkir', 'Permen Fisik', 'QRIS', 'Debit', 'Status Pengambilan']],
+            body: tableRows,
+            theme: 'grid',
+            headStyles: { fillColor: [0, 121, 107] },
+            styles: { fontSize: 8 }
+        });
+
+        doc.save(`Laporan_Tutup_Buku_Toko_AWW_${new Date().toISOString().split('T')[0]}.pdf`);
     }
 
     function requestEditStore(id) {
