@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="3.8.0-analytics-center">
+    <meta name="app-version" content="3.7.0-reminder-2weeks">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -110,6 +110,7 @@
         .chart-container-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 20px; }
         .chart-card { background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
+        /* Style Peringatan 2 Minggu */
         .alert-badge-warning {
             background: #ff9800;
             color: white;
@@ -155,7 +156,7 @@
     <!-- TOMBOL SLIDE / NAVIGASI UTAMA -->
     <div class="main-nav">
         <button class="main-nav-btn active" id="navSlide1" onclick="switchSlide(1)">📁 Brankas Permen</button>
-        <button class="main-nav-btn" id="navSlide2" onclick="requestSlide2()">📊 Cashflow & Analisis</button>
+        <button class="main-nav-btn" id="navSlide2" onclick="requestSlide2()">📊 Cashflow Permen</button>
     </div>
 
     <!-- SLIDE 1: PENCATATAN BRANKAS -->
@@ -257,7 +258,7 @@
         </div>
     </div>
 
-    <!-- SLIDE 2: CASHFLOW & ANALISIS -->
+    <!-- SLIDE 2: CASHFLOW PERMEN -->
     <div class="slide-section" id="slide2">
         <!-- BAGIAN 1: REKAPITULASI ARUS KAS BULANAN -->
         <div class="card" style="border-top: 4px solid #673ab7; margin-bottom: 30px;">
@@ -305,23 +306,6 @@
             </div>
         </div>
 
-        <!-- FITUR BARU: ANALISIS & VISUALISASI DATA (DI APLIKASI PUSAT) -->
-        <div class="card" style="border-top: 4px solid #00796b; margin-bottom: 30px;">
-            <h3 style="margin-bottom: 10px; color: #00796b;">📈 Analisis & Visualisasi Tren Omset Berdasarkan Hari</h3>
-            <p style="font-size: 0.85rem; color: #666; margin-top: 0; margin-bottom: 20px;">Menampilkan grafik tren perbandingan omset harian dan analisis hari tersibuk operasional toko:</p>
-            
-            <div class="chart-container-box" style="margin-top: 0;">
-                <div class="chart-card">
-                    <h4 style="margin-top:0; text-align:center; color:#333; font-size:0.95rem;">Grafik Tren Omset Berdasarkan Hari</h4>
-                    <div style="position: relative; height: 240px;"><canvas id="weekdayTrendChart"></canvas></div>
-                </div>
-                <div class="chart-card">
-                    <h4 style="margin-top:0; text-align:center; color:#333; font-size:0.95rem;">Analisis Kategori Pengeluaran Toko</h4>
-                    <div style="position: relative; height: 240px;"><canvas id="expenseCategoryChart"></canvas></div>
-                </div>
-            </div>
-        </div>
-
         <!-- BAGIAN: RANKING OMSET & PARKIR HARIAN ANTAR TOKO -->
         <div class="card" style="border-top: 4px solid #f57c00; margin-bottom: 30px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
@@ -364,6 +348,7 @@
                 <div style="background: #e8f5e9; padding: 5px; border-radius: 6px; border: 1px dashed #81c784;"><span style="color: #2e7d32; font-size:0.75rem;">PARKIR BELUM DIAMBIL</span><div id="grandTotalUncollectedParking" style="color: #2e7d32;">Rp 0</div></div>
             </div>
 
+            <!-- KARTU RINGKASAN TIAP TOKO (DENGAN PENGINGAT > 2 MINGGU) -->
             <div class="store-columns-grid" id="storeColumnsContainer"></div>
 
             <div class="filter-bar" style="margin-top: 25px;">
@@ -568,8 +553,6 @@
 
     let cashflowPieChartInstance = null;
     let storeIncomeBarChartInstance = null;
-    let weekdayTrendChartInstance = null;
-    let expenseCategoryChartInstance = null;
 
     const standardDenominations = [
         { key: 'receh', label: 'Receh', emoji: '🪙', color: '#795548', bg: '#efebe9' },
@@ -634,7 +617,6 @@
             processAndRenderStoreData();
             renderMonthlyRecap();
             renderStoreRanking();
-            renderAnalyticsCharts();
         });
 
         db.ref('store_audit_logs').on('value', snapshot => {
@@ -645,7 +627,6 @@
         db.ref('operational_expenses').on('value', snapshot => {
             operationalExpenses = snapshot.val() || [];
             renderMonthlyRecap();
-            renderAnalyticsCharts();
         });
 
         const now = new Date();
@@ -702,7 +683,6 @@
             renderMonthlyRecap();
             renderStoreRanking();
             renderStoreAuditLogs();
-            renderAnalyticsCharts();
         }
     }
 
@@ -1212,6 +1192,7 @@
             storeStatsMap[store] = { comp: 0, park: 0, debit: 0, qris: 0, phys: 0, uncollectedPhys: 0, count: 0, lastReportDate: null };
         });
 
+        // Cari laporan terakhir per toko untuk pengecekan batas waktu 2 minggu (14 hari)
         storeClosings.forEach(item => {
             if (storeNames.includes(item.storePoint) && item.date) {
                 let parts = item.date.split('/');
@@ -1257,6 +1238,7 @@
             let data = storeStatsMap[store];
             let activeClass = selectedStoreFilter === store ? 'active-filter' : '';
             
+            // Logika Pengingat > 2 Minggu (14 Hari) Tanpa Laporan / Setoran Fisik Belum Diambil
             let isOverdueTwoWeeks = false;
             if (!data.lastReportDate || (nowTime - data.lastReportDate.getTime() > fourteenDaysMs)) {
                 isOverdueTwoWeeks = true;
@@ -1534,95 +1516,6 @@
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: { y: { beginAtZero: true, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } }
-            }
-        });
-    }
-
-    // Fungsi Render Chart Analisis Data Tambahan Berdasarkan Hari (Weekday) & Kategori Pengeluaran
-    function renderAnalyticsCharts() {
-        // 1. Analisis Tren Omset Berdasarkan Hari (Senin - Minggu)
-        let weekdayTotals = { 'Senin': 0, 'Selasa': 0, 'Rabu': 0, 'Kamis': 0, 'Jumat': 0, 'Sabtu': 0, 'Minggu': 0 };
-        let weekdayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-
-        storeClosings.forEach(item => {
-            if (!item.date) return;
-            let parts = item.date.split('/');
-            if (parts.length >= 3) {
-                let dt = new Date(parts[2], parts[1] - 1, parts[0]);
-                let dayName = weekdayNames[dt.getDay()];
-                let omset = item.computerOmset || ((item.debit || 0) + (item.qris || 0) + (item.physicalCash || 0));
-                if (weekdayTotals.hasOwnProperty(dayName)) {
-                    weekdayTotals[dayName] += omset;
-                }
-            }
-        });
-
-        let weekdayLabels = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-        let weekdayData = weekdayLabels.map(d => weekdayTotals[d]);
-
-        const ctxWeekday = document.getElementById('weekdayTrendChart').getContext('2d');
-        if (weekdayTrendChartInstance) weekdayTrendChartInstance.destroy();
-        weekdayTrendChartInstance = new Chart(ctxWeekday, {
-            type: 'line',
-            data: {
-                labels: weekdayLabels,
-                datasets: [{
-                    label: 'Total Omset (Rp)',
-                    data: weekdayData,
-                    borderColor: '#00796b',
-                    backgroundColor: 'rgba(0, 121, 107, 0.1)',
-                    fill: true,
-                    tension: 0.3,
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } }
-            }
-        });
-
-        // 2. Analisis Kategori Pengeluaran Operasional / Toko
-        let expenseCategoryTotals = {};
-        storeClosings.forEach(item => {
-            if (item.expenseDesc && item.expenseDesc !== '-') {
-                let parts = item.expenseDesc.split(',');
-                parts.forEach(p => {
-                    let match = p.match(/(.*?)\s*\((Rp[\d\.]+)\)/);
-                    if (match) {
-                        let catName = match[1].trim();
-                        let costVal = parseCleanNumber(match[2]);
-                        expenseCategoryTotals[catName] = (expenseCategoryTotals[catName] || 0) + costVal;
-                    }
-                });
-            }
-        });
-
-        let expLabels = Object.keys(expenseCategoryTotals);
-        let expData = Object.values(expenseCategoryTotals);
-        if (expLabels.length === 0) {
-            expLabels = ['Belum Ada Data Pengeluaran'];
-            expData = [1];
-        }
-
-        const ctxExpense = document.getElementById('expenseCategoryChart').getContext('2d');
-        if (expenseCategoryChartInstance) expenseCategoryChartInstance.destroy();
-        expenseCategoryChartInstance = new Chart(ctxExpense, {
-            type: 'doughnut',
-            data: {
-                labels: expLabels,
-                datasets: [{
-                    data: expData,
-                    backgroundColor: ['#f57c00', '#d32f2f', '#7b1fa2', '#1976d2', '#388e3c', '#00796b'],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } }
             }
         });
     }
