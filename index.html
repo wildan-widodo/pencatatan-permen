@@ -4,13 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="3.5.0-charts-pdf">
-    <!-- Library PDF, QR Code, & Chart.js -->
+    <meta name="app-version" content="3.7.0-reminder-2weeks">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -41,7 +39,7 @@
         .filter-bar select, .filter-bar input { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.95rem; width: auto; flex: 1; }
 
         .store-columns-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .store-column-card { background: #f8f9fa; border: 1px solid #dcdcdc; border-top: 4px solid #00796b; padding: 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .store-column-card { background: #f8f9fa; border: 1px solid #dcdcdc; border-top: 4px solid #00796b; padding: 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s; position: relative; }
         .store-column-card:hover { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); background: #f1f8f6; }
         .store-column-card.active-filter { border: 2px solid #00796b; background: #e0f2f1; }
         .store-column-card h4 { margin: 0 0 10px 0; color: #00796b; font-size: 1rem; text-align: center; border-bottom: 1px solid #ddd; padding-bottom: 6px; }
@@ -109,9 +107,20 @@
         .rank-2 { background: #c0c0c0; color: #333; box-shadow: 0 2px 5px rgba(192,192,192,0.5); }
         .rank-3 { background: #cd7f32; color: white; box-shadow: 0 2px 5px rgba(205,127,50,0.5); }
 
-        /* Container Grafik */
         .chart-container-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 20px; }
         .chart-card { background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+        /* Style Peringatan 2 Minggu */
+        .alert-badge-warning {
+            background: #ff9800;
+            color: white;
+            font-size: 0.7rem;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -285,7 +294,6 @@
                 </div>
             </div>
 
-            <!-- FITUR BARU 1: GRAFIK VISUALISASI INTERAKTIF (CHART.JS) -->
             <div class="chart-container-box">
                 <div class="chart-card">
                     <h4 style="margin-top:0; text-align:center; color:#333; font-size:0.95rem;">Perbandingan Pemasukan vs Pengeluaran</h4>
@@ -298,7 +306,7 @@
             </div>
         </div>
 
-        <!-- BAGIAN BARU: RANKING OMSET & PARKIR HARIAN ANTAR TOKO -->
+        <!-- BAGIAN: RANKING OMSET & PARKIR HARIAN ANTAR TOKO -->
         <div class="card" style="border-top: 4px solid #f57c00; margin-bottom: 30px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                 <h3 style="margin: 0; color: #e65100;">🏆 Ranking Omset & Parkir Toko (Berdasarkan Tanggal)</h3>
@@ -330,7 +338,6 @@
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
                 <h3 style="margin: 0;">🏪 Ringkasan Omset, Permen Fisik & Parkir 5 Titik Toko AWW</h3>
-                <!-- FITUR BARU 2: TOMBOL EKSPOR PDF LAPORAN TUTUP BUKU TOKO -->
                 <button type="button" class="btn-pdf" onclick="exportStoreReportPDF()" style="width: auto; margin-top:0;">📄 Ekspor Laporan Toko (.PDF)</button>
             </div>
 
@@ -341,7 +348,7 @@
                 <div style="background: #e8f5e9; padding: 5px; border-radius: 6px; border: 1px dashed #81c784;"><span style="color: #2e7d32; font-size:0.75rem;">PARKIR BELUM DIAMBIL</span><div id="grandTotalUncollectedParking" style="color: #2e7d32;">Rp 0</div></div>
             </div>
 
-            <!-- KARTU RINGKASAN TIAP TOKO -->
+            <!-- KARTU RINGKASAN TIAP TOKO (DENGAN PENGINGAT > 2 MINGGU) -->
             <div class="store-columns-grid" id="storeColumnsContainer"></div>
 
             <div class="filter-bar" style="margin-top: 25px;">
@@ -386,6 +393,29 @@
                         </tr>
                     </thead>
                     <tbody id="storeClosingSummaryTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- LOG RIWAYAT KOREKSI DATA TOKO -->
+        <div class="card" style="border-top: 4px solid #3f51b5; margin-top: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin: 0; color: #3f51b5;">📜 Log Riwayat Koreksi & Perubahan Data Toko</h3>
+            </div>
+            <p style="font-size: 0.85rem; color: #666; margin-top: 0; margin-bottom: 15px;">Catatan transparansi setiap kali ada penyuntingan atau koreksi data tutup buku harian toko:</p>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Waktu Koreksi</th>
+                            <th>Titik Toko</th>
+                            <th>Jenis Perubahan</th>
+                            <th>Detail Data Sebelumnya ➔ Baru</th>
+                        </tr>
+                    </thead>
+                    <tbody id="storeAuditLogTableBody">
+                        <tr><td colspan="4" style="text-align: center; color: #777;">Belum ada log koreksi data toko.</td></tr>
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -471,6 +501,10 @@
         <div class="form-group"><label>Permen Fisik (Rp)</label><input type="text" id="editPhysInput" inputmode="numeric"></div>
         <div class="form-group"><label>Pengeluaran Toko</label><input type="text" id="editExpenseInput"></div>
         <div class="form-group"><label>Parkir (Rp)</label><input type="text" id="editParkInput" inputmode="numeric"></div>
+        <div class="form-group" style="background: #fff8e1; padding: 10px; border-radius: 4px; border: 1px solid #ffe0b2;">
+            <label style="color: #e65100;">⚠️ Alasan / Catatan Koreksi (Wajib Diisi):</label>
+            <input type="text" id="editStoreReason" placeholder="Contoh: Ralat perhitungan fisik kasir" style="background: #fff;" required>
+        </div>
         <div class="modal-buttons"><button class="btn-cancel" onclick="document.getElementById('editStoreModal').style.display='none'">Batal</button><button class="btn-submit" onclick="submitEditStoreRecord()">Simpan</button></div>
     </div>
 </div>
@@ -509,6 +543,7 @@
     let transactions = [];
     let deletionLogs = [];
     let storeClosings = [];
+    let storeAuditLogs = [];
     let operationalExpenses = [];
     let activeTabVaultId = 'b1';
     let isAuditTrailUnlocked = false;
@@ -516,7 +551,6 @@
     let pendingPinCallback = null;
     let storeNames = ['AWW Sambi', 'AWW Beji', 'AWW Bandung', 'AWW Trenggalek', 'AWW Ponorogo'];
 
-    // Variabel Global untuk Chart.js
     let cashflowPieChartInstance = null;
     let storeIncomeBarChartInstance = null;
 
@@ -585,6 +619,11 @@
             renderStoreRanking();
         });
 
+        db.ref('store_audit_logs').on('value', snapshot => {
+            storeAuditLogs = snapshot.val() || [];
+            renderStoreAuditLogs();
+        });
+
         db.ref('operational_expenses').on('value', snapshot => {
             operationalExpenses = snapshot.val() || [];
             renderMonthlyRecap();
@@ -643,6 +682,7 @@
         if (num === 2) {
             renderMonthlyRecap();
             renderStoreRanking();
+            renderStoreAuditLogs();
         }
     }
 
@@ -1149,7 +1189,21 @@
         let grandComp = 0, grandPark = 0, uncolCash = 0, uncolPark = 0;
         let storeStatsMap = {};
         storeNames.forEach(store => {
-            storeStatsMap[store] = { comp: 0, park: 0, debit: 0, qris: 0, phys: 0, uncollectedPhys: 0, count: 0 };
+            storeStatsMap[store] = { comp: 0, park: 0, debit: 0, qris: 0, phys: 0, uncollectedPhys: 0, count: 0, lastReportDate: null };
+        });
+
+        // Cari laporan terakhir per toko untuk pengecekan batas waktu 2 minggu (14 hari)
+        storeClosings.forEach(item => {
+            if (storeNames.includes(item.storePoint) && item.date) {
+                let parts = item.date.split('/');
+                if (parts.length >= 3) {
+                    let itemDateObj = new Date(parts[2], parts[1] - 1, parts[0]);
+                    let currentStats = storeStatsMap[item.storePoint];
+                    if (!currentStats.lastReportDate || itemDateObj > currentStats.lastReportDate) {
+                        currentStats.lastReportDate = itemDateObj;
+                    }
+                }
+            }
         });
 
         baseFilteredLogs.forEach(i => {
@@ -1177,13 +1231,27 @@
             }
         });
 
+        const nowTime = new Date().getTime();
+        const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
+
         storeNames.forEach(store => {
             let data = storeStatsMap[store];
             let activeClass = selectedStoreFilter === store ? 'active-filter' : '';
+            
+            // Logika Pengingat > 2 Minggu (14 Hari) Tanpa Laporan / Setoran Fisik Belum Diambil
+            let isOverdueTwoWeeks = false;
+            if (!data.lastReportDate || (nowTime - data.lastReportDate.getTime() > fourteenDaysMs)) {
+                isOverdueTwoWeeks = true;
+            }
+
+            let warningBadgeHtml = isOverdueTwoWeeks ? 
+                `<div class="alert-badge-warning">⚠️ > 2 Minggu Belum Lapor/Ambil!</div>` : '';
+
             container.innerHTML += `
                 <div class="store-column-card ${activeClass}" onclick="filterStoreHistory('${store}')">
                     <h4>${store}</h4>
-                    <div class="store-stat-item"><label>Omset Komputer:</label><span>${formatRp(data.comp)}</span></div>
+                    ${warningBadgeHtml}
+                    <div class="store-stat-item" style="margin-top:5px;"><label>Omset Komputer:</label><span>${formatRp(data.comp)}</span></div>
                     <div class="store-stat-item"><label>Debit:</label><span>${formatRp(data.debit)}</span></div>
                     <div class="store-stat-item"><label>QRIS:</label><span>${formatRp(data.qris)}</span></div>
                     <div class="store-stat-item"><label>Total Fisik Masuk:</label><span>${formatRp(data.phys)}</span></div>
@@ -1407,13 +1475,10 @@
             <b>Total Pengeluaran: ${formatRp(totalOpExpense)}</b>
         `;
 
-        // Render Grafik Chart.js (Fitur Baru 1)
         renderCharts(totalStoreIncome, totalOpExpense, storePhys, storeDebit, storeQris, storePark);
     }
 
-    // FUNGSI RENDER GRAFIK CHART.JS (FITUR 1)
     function renderCharts(totalIncome, totalExpense, phys, debit, qris, park) {
-        // Pie Chart: Pemasukan vs Pengeluaran
         const ctxPie = document.getElementById('cashflowPieChart').getContext('2d');
         if (cashflowPieChartInstance) cashflowPieChartInstance.destroy();
         cashflowPieChartInstance = new Chart(ctxPie, {
@@ -1433,7 +1498,6 @@
             }
         });
 
-        // Bar Chart: Komposisi Pemasukan Toko
         const ctxBar = document.getElementById('storeIncomeBarChart').getContext('2d');
         if (storeIncomeBarChartInstance) storeIncomeBarChartInstance.destroy();
         storeIncomeBarChartInstance = new Chart(ctxBar, {
@@ -1456,7 +1520,6 @@
         });
     }
 
-    // FUNGSI EKSPOR LAPORAN TUTUP BUKU TOKO KE PDF (FITUR 2)
     function exportStoreReportPDF() {
         const { jsPDF } = window.jspdf;
         let doc = new jsPDF('l', 'mm', 'a4');
@@ -1539,10 +1602,21 @@
         document.getElementById('editPhysInput').value = item.physicalCash || 0;
         document.getElementById('editExpenseInput').value = item.expenseDesc || '';
         document.getElementById('editParkInput').value = item.parking || 0;
+        document.getElementById('editStoreReason').value = '';
         document.getElementById('editStoreModal').style.display = 'flex';
     }
+
     function submitEditStoreRecord() {
         let id = parseInt(document.getElementById('modalEditStoreId').value);
+        let reason = document.getElementById('editStoreReason').value.trim();
+        if (!reason) {
+            alert('Alasan / Catatan koreksi wajib diisi!');
+            return;
+        }
+
+        let oldItem = storeClosings.find(i => i.id === id);
+        if (!oldItem) return;
+
         let debit = parseCleanNumber(document.getElementById('editDebitInput').value);
         let qris = parseCleanNumber(document.getElementById('editQrisInput').value);
         let phys = parseCleanNumber(document.getElementById('editPhysInput').value);
@@ -1551,8 +1625,42 @@
         let park = parseCleanNumber(document.getElementById('editParkInput').value);
 
         storeClosings = storeClosings.map(i => i.id === id ? { ...i, debit, qris, physicalCash: phys, computerOmset: comp, expenseDesc: expense||'-', parking: park } : i);
+        
+        let now = new Date();
+        let logEntry = {
+            id: Date.now(),
+            time: `${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}`,
+            storePoint: oldItem.storePoint,
+            details: `Koreksi Tutup Buku (${oldItem.date}) | Alasan: ${reason} | Fisik Lama: ${formatRp(oldItem.physicalCash)} ➔ Baru: ${formatRp(phys)}`,
+        };
+        storeAuditLogs.push(logEntry);
+
         db.ref('store_closings').set(storeClosings);
+        db.ref('store_audit_logs').set(storeAuditLogs);
+
         document.getElementById('editStoreModal').style.display = 'none';
+        alert('Data rekap toko berhasil diperbarui dan tercatat di Log Koreksi!');
+    }
+
+    function renderStoreAuditLogs() {
+        const tbody = document.getElementById('storeAuditLogTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        let safeLogs = storeAuditLogs.filter(i => i !== null && i !== undefined);
+        if (safeLogs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #777;">Belum ada log koreksi data toko.</td></tr>`;
+            return;
+        }
+
+        safeLogs.slice().reverse().forEach(log => {
+            tbody.innerHTML += `<tr>
+                <td>${log.time}</td>
+                <td><b>${log.storePoint}</b></td>
+                <td><span style="background: #3f51b5; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.75rem;">KOREKSI</span></td>
+                <td>${log.details}</td>
+            </tr>`;
+        });
     }
 
     function openLinkModal() {
