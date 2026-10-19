@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="3.8.0-vault-balancing">
+    <meta name="app-version" content="3.9.0-vault-balancing-denom">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -57,7 +57,7 @@
         .tab-btn.master-tab.active { background: #512da8; }
 
         .modal { display: none; position: fixed; z-index: 10; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
-        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 450px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); text-align: center; max-height: 90vh; overflow-y: auto; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 480px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); text-align: center; max-height: 90vh; overflow-y: auto; }
         .modal-buttons { display: flex; gap: 10px; margin-top: 15px; }
 
         .denom-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
@@ -435,30 +435,39 @@
     </div>
 </div>
 
-<!-- MODAL BALANCING SALDO SEMUA BRANKAS -->
+<!-- MODAL BALANCING SALDO BERDASARKAN PECAHAN -->
 <div class="modal" id="balancingModal">
-    <div class="modal-content" style="width: 400px; text-align: left;">
-        <h3 style="text-align: center; color: #00796b;">⚖️ Balancing Saldo Keseluruhan Brankas</h3>
-        <p style="font-size: 0.85rem; color: #666; text-align: center;">Sesuaikan saldo aktual di lapangan ke dalam sistem (membuat transaksi penyesuaian otomatis).</p>
+    <div class="modal-content" style="width: 480px; text-align: left;">
+        <h3 style="text-align: center; color: #00796b;">⚖️ Balancing Saldo Berdasarkan Pecahan</h3>
+        <p style="font-size: 0.85rem; color: #666; text-align: center;">Masukkan rincian nominal riil per pecahan di lapangan:</p>
         <div class="form-group">
             <label>Pilih Brankas Target:</label>
-            <select id="balancingVaultSelect" style="padding: 10px; font-size: 1rem;">
+            <select id="balancingVaultSelect" onchange="renderBalancingDenomTable()" style="padding: 10px; font-size: 1rem;">
                 <option value="b1">Brankas Gudang</option>
                 <option value="b2">Brankas Permen Tukar</option>
                 <option value="b3">Brankas Kamar</option>
             </select>
         </div>
         <div class="form-group">
-            <label>Nominal Saldo Riil / Aktual (Rp):</label>
-            <input type="text" id="balancingTargetAmount" inputmode="numeric" placeholder="0" oninput="formatInputNumber(this)" style="font-weight: bold; color: #2e7d32; font-size: 1.1rem;">
+            <label>Rincian Pecahan Aktual:</label>
+            <div class="table-responsive">
+                <table class="denom-input-table">
+                    <thead><tr><th>Pecahan / Kategori</th><th>Nominal Riil (Rp)</th></tr></thead>
+                    <tbody id="balancingDenomTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="form-group">
+            <label><b>Total Keseluruhan Aktual (Rp)</b></label>
+            <input type="text" id="balancingGrandTotalInput" readonly placeholder="Otomatis terhitung" style="font-weight: bold; font-size: 1.1rem; color: #2e7d32;">
         </div>
         <div class="form-group">
             <label>Alasan / Catatan Penyesuaian:</label>
-            <input type="text" id="balancingReason" placeholder="Contoh: Selisih stock opname fisik" style="font-size: 1rem;">
+            <input type="text" id="balancingReason" placeholder="Contoh: Penyesuaian stok opname fisik" style="font-size: 1rem;">
         </div>
         <div class="modal-buttons">
             <button class="btn-cancel" onclick="document.getElementById('balancingModal').style.display='none'">Batal</button>
-            <button class="btn-submit" onclick="submitBalancing()" style="background: #00796b;">Lanjut Konfirmasi PIN</button>
+            <button class="btn-submit" onclick="submitBalancing()" style="background: #00796b;">Simpan & Konfirmasi PIN</button>
         </div>
     </div>
 </div>
@@ -904,15 +913,40 @@
     }
 
     function openBalancingModal() {
-        document.getElementById('balancingTargetAmount').value = '';
         document.getElementById('balancingReason').value = '';
+        renderBalancingDenomTable();
         document.getElementById('balancingModal').style.display = 'flex';
-        setTimeout(() => document.getElementById('balancingTargetAmount').focus(), 100);
+    }
+
+    function renderBalancingDenomTable() {
+        const tbody = document.getElementById('balancingDenomTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        let currentVaultId = document.getElementById('balancingVaultSelect').value;
+        getActiveDenominations(currentVaultId).forEach(d => {
+            tbody.innerHTML += `<tr><td style="font-weight:bold;">${d.label}</td><td><input type="text" class="balancing-denom-input" inputmode="numeric" data-key="${d.key}" value="0" oninput="onBalancingAmountInput(this)"></td></tr>`;
+        });
+        tbody.innerHTML += `<tr style="background:#fff8e1;"><td style="font-weight:bold; color:#b71c1c;">Permen Rusak Mix</td><td><input type="text" id="balancingRusakInput" inputmode="numeric" value="0" oninput="onBalancingAmountInput(this)"></td></tr>`;
+        calculateBalancingTotal();
+    }
+
+    function onBalancingAmountInput(el) {
+        let val = parseCleanNumber(el.value);
+        el.value = val > 0 ? formatNumber(val) : '0';
+        calculateBalancingTotal();
+    }
+
+    function calculateBalancingTotal() {
+        let total = 0;
+        document.querySelectorAll('.balancing-denom-input').forEach(i => total += parseCleanNumber(i.value));
+        const rusak = document.getElementById('balancingRusakInput');
+        if (rusak) total += parseCleanNumber(rusak.value);
+        document.getElementById('balancingGrandTotalInput').value = formatNumber(total);
     }
 
     function submitBalancing() {
         let vaultId = document.getElementById('balancingVaultSelect').value;
-        let targetAmount = parseCleanNumber(document.getElementById('balancingTargetAmount').value);
+        let targetAmount = parseCleanNumber(document.getElementById('balancingGrandTotalInput').value);
         let reason = document.getElementById('balancingReason').value.trim();
 
         if (!reason) {
@@ -925,7 +959,6 @@
 
         promptPin('Konfirmasi Master PIN', `Masukkan Master PIN untuk mengonfirmasi balancing saldo ${vault.name}:`, (enteredPin) => {
             if (enteredPin === masterPin) {
-                // Hitung saldo saat ini pada brankas tersebut
                 let currentVaultBalance = 0;
                 transactions.forEach(tx => {
                     if (tx.vaultId === vaultId) {
@@ -940,7 +973,7 @@
 
                 let diff = targetAmount - currentVaultBalance;
                 if (diff === 0) {
-                    alert('Saldo aktual sudah sama dengan sistem. Tidak ada perubahan.');
+                    alert('Total saldo aktual sudah sama dengan sistem. Tidak ada perubahan.');
                     return true;
                 }
 
@@ -948,13 +981,20 @@
                 let absDiff = Math.abs(diff);
                 let now = new Date();
 
-                // Buat transaksi penyesuaian otomatis
+                const details = [];
+                document.querySelectorAll('.balancing-denom-input').forEach(i => {
+                    let val = parseCleanNumber(i.value);
+                    if (val > 0) details.push({ denomKey: i.dataset.key, amount: val });
+                });
+                let rusakVal = parseCleanNumber(document.getElementById('balancingRusakInput').value);
+                if (rusakVal > 0) details.push({ denomKey: 'rusak', amount: rusakVal, isRusak: true });
+
                 let balancingTx = {
                     id: Date.now(),
                     vaultId,
                     type: txType,
                     amount: absDiff,
-                    details: [{ denomKey: 'balancing', amount: absDiff }],
+                    details,
                     exchangeStatus: 'sudah',
                     receivedDetails: [],
                     totalReceived: 0,
@@ -966,14 +1006,13 @@
 
                 transactions.push(balancingTx);
 
-                // Masukkan ke log Audit Trail
                 deletionLogs.push({
                     id: balancingTx.id,
                     vaultSource: vault.name,
                     type: txType,
                     amount: absDiff,
                     description: balancingTx.description,
-                    reason: `⚖️ BALANCING SALDO: ${reason}`,
+                    reason: `⚖️ BALANCING: ${reason}`,
                     deletedAt: `${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID')}`
                 });
 
