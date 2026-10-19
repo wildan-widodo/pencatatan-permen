@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="3.7.0-reminder-2weeks">
+    <meta name="app-version" content="3.8.0-vault-balancing">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -110,7 +110,6 @@
         .chart-container-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 20px; }
         .chart-card { background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
-        /* Style Peringatan 2 Minggu */
         .alert-badge-warning {
             background: #ff9800;
             color: white;
@@ -166,8 +165,9 @@
                 <h3 id="grandTotalTitle" style="margin: 0; color: white;">Total Saldo Keseluruhan</h3>
                 <div id="grandTotalBalanceContainer" style="font-size: 1.5rem; font-weight: bold; margin-top: 5px;">Rp 0</div>
             </div>
-            <div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                 <button type="button" class="btn-submit" onclick="requestUnlockAllVaults()" style="background: #ff9800; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer;">🔓 Buka Semua dengan Master PIN</button>
+                <button type="button" class="btn-submit" id="balancingBtn" onclick="openBalancingModal()" style="background: #00796b; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; display: none;">⚖️ Balancing Saldo</button>
             </div>
         </div>
 
@@ -242,16 +242,16 @@
 
         <div class="card" id="auditTrailCard">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="color: #c62828; margin: 0;">🛡️ Audit Trail (Riwayat Penghapusan Transaksi)</h3>
+                <h3 style="color: #c62828; margin: 0;">🛡️ Audit Trail (Riwayat Penghapusan & Balancing)</h3>
                 <button type="button" id="unlockAuditBtn" class="btn-submit" onclick="requestUnlockAuditTrail()" style="background: #673ab7; width: auto; padding: 6px 12px; font-size: 0.85rem;">🔑 Buka dengan Master PIN</button>
             </div>
             <div class="table-responsive">
                 <table>
                     <thead>
-                        <tr><th>Waktu Hapus</th><th>Brankas Sumber</th><th>Jenis</th><th>Nominal</th><th>Keterangan Asli</th><th>Alasan Penghapusan</th></tr>
+                        <tr><th>Waktu</th><th>Brankas / Sumber</th><th>Jenis Aktivitas</th><th>Nominal / Detail</th><th>Keterangan / Alasan</th></tr>
                     </thead>
                     <tbody id="auditTrailTableBody">
-                        <tr><td colspan="6" style="text-align: center; color: #777;">Belum ada riwayat penghapusan.</td></tr>
+                        <tr><td colspan="5" style="text-align: center; color: #777;">Belum ada riwayat audit.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -431,6 +431,34 @@
         <div class="modal-buttons">
             <button class="btn-cancel" onclick="closePinModal()">Batal</button>
             <button class="btn-submit" onclick="verifyPinAction()">Konfirmasi</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL BALANCING SALDO SEMUA BRANKAS -->
+<div class="modal" id="balancingModal">
+    <div class="modal-content" style="width: 400px; text-align: left;">
+        <h3 style="text-align: center; color: #00796b;">⚖️ Balancing Saldo Keseluruhan Brankas</h3>
+        <p style="font-size: 0.85rem; color: #666; text-align: center;">Sesuaikan saldo aktual di lapangan ke dalam sistem (membuat transaksi penyesuaian otomatis).</p>
+        <div class="form-group">
+            <label>Pilih Brankas Target:</label>
+            <select id="balancingVaultSelect" style="padding: 10px; font-size: 1rem;">
+                <option value="b1">Brankas Gudang</option>
+                <option value="b2">Brankas Permen Tukar</option>
+                <option value="b3">Brankas Kamar</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Nominal Saldo Riil / Aktual (Rp):</label>
+            <input type="text" id="balancingTargetAmount" inputmode="numeric" placeholder="0" oninput="formatInputNumber(this)" style="font-weight: bold; color: #2e7d32; font-size: 1.1rem;">
+        </div>
+        <div class="form-group">
+            <label>Alasan / Catatan Penyesuaian:</label>
+            <input type="text" id="balancingReason" placeholder="Contoh: Selisih stock opname fisik" style="font-size: 1rem;">
+        </div>
+        <div class="modal-buttons">
+            <button class="btn-cancel" onclick="document.getElementById('balancingModal').style.display='none'">Batal</button>
+            <button class="btn-submit" onclick="submitBalancing()" style="background: #00796b;">Lanjut Konfirmasi PIN</button>
         </div>
     </div>
 </div>
@@ -664,7 +692,7 @@
     }
 
     function requestUnlockAuditTrail() {
-        promptPin('Buka Keamanan Audit Trail', 'Masukkan Master PIN untuk melihat riwayat penghapusan:', (pin) => {
+        promptPin('Buka Keamanan Audit Trail', 'Masukkan Master PIN untuk melihat riwayat audit:', (pin) => {
             if (pin === masterPin) {
                 isAuditTrailUnlocked = true;
                 renderAll();
@@ -821,6 +849,7 @@
         const vaultContainer = document.getElementById('vaultContainer');
         const vaultSelect = document.getElementById('vaultSelect');
         const currentSelected = vaultSelect ? vaultSelect.value : '';
+        const balancingBtn = document.getElementById('balancingBtn');
         if (vaultContainer) vaultContainer.innerHTML = '';
         if (vaultSelect) vaultSelect.innerHTML = '';
 
@@ -862,12 +891,99 @@
         document.getElementById('grandTotalTitle').innerText = allUnlocked ? 'Total Saldo Keseluruhan (Terbuka Penuh)' : 'Total Saldo Keseluruhan (Terkunci Sebagian)';
         document.getElementById('grandTotalBalanceContainer').innerText = allUnlocked ? formatRp(grandTotal) : 'Rp •••••••• (Buka Semua PIN)';
         
+        if (balancingBtn) {
+            balancingBtn.style.display = allUnlocked ? 'inline-block' : 'none';
+        }
+
         renderDenomInputTable();
         renderTabs();
         renderTransactions();
         renderDenomSummary();
         renderMonthlySummary();
         renderAuditTrail();
+    }
+
+    function openBalancingModal() {
+        document.getElementById('balancingTargetAmount').value = '';
+        document.getElementById('balancingReason').value = '';
+        document.getElementById('balancingModal').style.display = 'flex';
+        setTimeout(() => document.getElementById('balancingTargetAmount').focus(), 100);
+    }
+
+    function submitBalancing() {
+        let vaultId = document.getElementById('balancingVaultSelect').value;
+        let targetAmount = parseCleanNumber(document.getElementById('balancingTargetAmount').value);
+        let reason = document.getElementById('balancingReason').value.trim();
+
+        if (!reason) {
+            alert('Alasan / Catatan balancing wajib diisi!');
+            return;
+        }
+
+        let vault = vaults.find(v => v.id === vaultId);
+        document.getElementById('balancingModal').style.display = 'none';
+
+        promptPin('Konfirmasi Master PIN', `Masukkan Master PIN untuk mengonfirmasi balancing saldo ${vault.name}:`, (enteredPin) => {
+            if (enteredPin === masterPin) {
+                // Hitung saldo saat ini pada brankas tersebut
+                let currentVaultBalance = 0;
+                transactions.forEach(tx => {
+                    if (tx.vaultId === vaultId) {
+                        if (vaultId === 'b2' && tx.type === 'keluar') {
+                            currentVaultBalance -= tx.amount;
+                            if (tx.exchangeStatus === 'sudah') currentVaultBalance += (tx.totalReceived || tx.amount);
+                        } else {
+                            currentVaultBalance += (tx.type === 'masuk' ? tx.amount : -tx.amount);
+                        }
+                    }
+                });
+
+                let diff = targetAmount - currentVaultBalance;
+                if (diff === 0) {
+                    alert('Saldo aktual sudah sama dengan sistem. Tidak ada perubahan.');
+                    return true;
+                }
+
+                let txType = diff > 0 ? 'masuk' : 'keluar';
+                let absDiff = Math.abs(diff);
+                let now = new Date();
+
+                // Buat transaksi penyesuaian otomatis
+                let balancingTx = {
+                    id: Date.now(),
+                    vaultId,
+                    type: txType,
+                    amount: absDiff,
+                    details: [{ denomKey: 'balancing', amount: absDiff }],
+                    exchangeStatus: 'sudah',
+                    receivedDetails: [],
+                    totalReceived: 0,
+                    description: `Balancing: ${reason} (Sistem: ${formatRp(currentVaultBalance)} ➔ Riil: ${formatRp(targetAmount)})`,
+                    date: now.toLocaleDateString('id-ID'),
+                    time: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                    monthYear: new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(now)
+                };
+
+                transactions.push(balancingTx);
+
+                // Masukkan ke log Audit Trail
+                deletionLogs.push({
+                    id: balancingTx.id,
+                    vaultSource: vault.name,
+                    type: txType,
+                    amount: absDiff,
+                    description: balancingTx.description,
+                    reason: `⚖️ BALANCING SALDO: ${reason}`,
+                    deletedAt: `${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID')}`
+                });
+
+                syncToCloud();
+                alert(`Balancing berhasil! Penyesuaian sebesar ${formatRp(absDiff)} (${txType.toUpperCase()}) telah diterapkan.`);
+                return true;
+            }
+            alert('Master PIN salah! Balancing dibatalkan.');
+            return false;
+        });
     }
 
     function renderTabs() {
@@ -1063,7 +1179,7 @@
         if (tx) {
             let now = new Date();
             let vaultSource = window.activeDeletingVaultName || 'Brankas';
-            deletionLogs.push({ ...tx, vaultSource, reason, deletedAt: `${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID')}` });
+            deletionLogs.push({ ...tx, vaultSource, reason: `🗑️ HAPUS: ${reason}`, deletedAt: `${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID')}` });
             transactions = transactions.filter(t => t.id !== txId);
             syncToCloud();
             document.getElementById('deleteReasonModal').style.display = 'none';
@@ -1148,7 +1264,7 @@
         if (!tbody) return;
 
         if (!isAuditTrailUnlocked) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #c62828;">🔒 Audit Trail Dikunci. Masukkan Master PIN untuk membuka.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #c62828;">🔒 Audit Trail Dikunci. Masukkan Master PIN untuk membuka.</td></tr>`;
             if (unlockBtn) unlockBtn.style.display = 'inline-block';
             return;
         }
@@ -1156,7 +1272,7 @@
         if (unlockBtn) unlockBtn.style.display = 'none';
         tbody.innerHTML = '';
         if (deletionLogs.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #777;">Belum ada riwayat penghapusan.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #777;">Belum ada riwayat audit.</td></tr>`;
             return;
         }
         deletionLogs.slice().reverse().forEach(log => {
@@ -1166,8 +1282,7 @@
                 <td><b style="color:#1565c0;">${sourceLabel}</b></td>
                 <td class="${log.type}">${log.type.toUpperCase()}</td>
                 <td class="${log.type}">${formatRp(log.amount)}</td>
-                <td>${log.description}</td>
-                <td style="color: #c62828; font-weight: bold;">${log.reason}</td>
+                <td style="font-weight: bold;">${log.reason}</td>
             </tr>`;
         });
     }
@@ -1192,7 +1307,6 @@
             storeStatsMap[store] = { comp: 0, park: 0, debit: 0, qris: 0, phys: 0, uncollectedPhys: 0, count: 0, lastReportDate: null };
         });
 
-        // Cari laporan terakhir per toko untuk pengecekan batas waktu 2 minggu (14 hari)
         storeClosings.forEach(item => {
             if (storeNames.includes(item.storePoint) && item.date) {
                 let parts = item.date.split('/');
@@ -1238,7 +1352,6 @@
             let data = storeStatsMap[store];
             let activeClass = selectedStoreFilter === store ? 'active-filter' : '';
             
-            // Logika Pengingat > 2 Minggu (14 Hari) Tanpa Laporan / Setoran Fisik Belum Diambil
             let isOverdueTwoWeeks = false;
             if (!data.lastReportDate || (nowTime - data.lastReportDate.getTime() > fourteenDaysMs)) {
                 isOverdueTwoWeeks = true;
