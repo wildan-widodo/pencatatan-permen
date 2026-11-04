@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="3.9.0-vault-balancing-denom">
+    <meta name="app-version" content="3.9.1-vault-balancing-denom-fixed">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -869,7 +869,9 @@
             let balance = 0;
             transactions.forEach(tx => {
                 if (tx.vaultId === v.id) {
-                    if (v.id === 'b2' && tx.type === 'keluar') {
+                    if (tx.isBalancing) {
+                        balance += (tx.type === 'masuk' ? tx.amount : -tx.amount);
+                    } else if (v.id === 'b2' && tx.type === 'keluar') {
                         balance -= tx.amount;
                         if (tx.exchangeStatus === 'sudah') balance += (tx.totalReceived || tx.amount);
                     } else {
@@ -959,65 +961,126 @@
 
         promptPin('Konfirmasi Master PIN', `Masukkan Master PIN untuk mengonfirmasi balancing saldo ${vault.name}:`, (enteredPin) => {
             if (enteredPin === masterPin) {
+                // 1. Hitung pecahan dan total saldo saat ini di sistem
+                let currentDenoms = { rusak: 0 };
+                getActiveDenominations(vaultId).forEach(d => currentDenoms[d.key] = 0);
+
                 let currentVaultBalance = 0;
                 transactions.forEach(tx => {
                     if (tx.vaultId === vaultId) {
-                        if (vaultId === 'b2' && tx.type === 'keluar') {
+                        if (tx.isBalancing) {
+                            currentVaultBalance += (tx.type === 'masuk' ? tx.amount : -tx.amount);
+                        } else if (vaultId === 'b2' && tx.type === 'keluar') {
                             currentVaultBalance -= tx.amount;
                             if (tx.exchangeStatus === 'sudah') currentVaultBalance += (tx.totalReceived || tx.amount);
                         } else {
                             currentVaultBalance += (tx.type === 'masuk' ? tx.amount : -tx.amount);
                         }
+
+                        if (tx.type === 'masuk' && tx.details) {
+                            tx.details.forEach(d => {
+                                let k = d.isRusak ? 'rusak' : d.denomKey;
+                                currentDenoms[k] = (currentDenoms[k] || 0) + d.amount;
+                            });
+                        } else if (tx.type === 'keluar' && tx.details) {
+                            tx.details.forEach(d => {
+                                let k = d.isRusak ? 'rusak' : d.denomKey;
+                                currentDenoms[k] = (currentDenoms[k] || 0) - d.amount;
+                            });
+                        }
+                        if (!tx.isBalancing && vaultId === 'b2' && tx.type === 'keluar' && tx.exchangeStatus === 'sudah' && tx.receivedDetails) {
+                            tx.receivedDetails.forEach(d => {
+                                let k = d.isRusak ? 'rusak' : d.denomKey;
+                                currentDenoms[k] = (currentDenoms[k] || 0) + d.amount;
+                            });
+                        }
                     }
                 });
 
-                let diff = targetAmount - currentVaultBalance;
-                if (diff === 0) {
-                    alert('Total saldo aktual sudah sama dengan sistem. Tidak ada perubahan.');
+                // 2. Kumpulkan rincian pecahan fisik (target aktual) dari input modal
+                let targetDenoms = {};
+                document.querySelectorAll('.balancing-denom-input').forEach(i => {
+                    targetDenoms[i.dataset.key] = parseCleanNumber(i.value);
+                });
+                targetDenoms['rusak'] = parseCleanNumber(document.getElementById('balancingRusakInput').value);
+
+                // 3. Kalkulasi selisih yang harus ditambahkan/dikurangi agar sistem cocok dengan fisik
+                let masukDetails = [];
+                let keluarDetails = [];
+                let masukTotal = 0;
+                let keluarTotal = 0;
+
+                for (let key in targetDenoms) {
+                    let diff = targetDenoms[key] - (currentDenoms[key] || 0);
+                    if (diff > 0) {
+                        masukDetails.push({ denomKey: key === 'rusak' ? 'rusak' : key, amount: diff, isRusak: key === 'rusak' });
+                        masukTotal += diff;
+                    } else if (diff < 0) {
+                        keluarDetails.push({ denomKey: key === 'rusak' ? 'rusak' : key, amount: Math.abs(diff), isRusak: key === 'rusak' });
+                        keluarTotal += Math.abs(diff);
+                    }
+                }
+
+                if (masukTotal === 0 && keluarTotal === 0) {
+                    alert('Total saldo dan seluruh rincian pecahan aktual sudah SAMA dengan data di sistem. Tidak ada yang perlu dibalancing.');
                     return true;
                 }
 
-                let txType = diff > 0 ? 'masuk' : 'keluar';
-                let absDiff = Math.abs(diff);
                 let now = new Date();
+                let dateStr = now.toLocaleDateString('id-ID');
+                let timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                let monthYearStr = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(now);
+                let timestamp = Date.now();
 
-                const details = [];
-                document.querySelectorAll('.balancing-denom-input').forEach(i => {
-                    let val = parseCleanNumber(i.value);
-                    if (val > 0) details.push({ denomKey: i.dataset.key, amount: val });
-                });
-                let rusakVal = parseCleanNumber(document.getElementById('balancingRusakInput').value);
-                if (rusakVal > 0) details.push({ denomKey: 'rusak', amount: rusakVal, isRusak: true });
+                // 4. Masukkan transaksi Penambahan (jika ada kekurangan di sistem)
+                if (masukTotal > 0) {
+                    let txMasuk = {
+                        id: timestamp,
+                        vaultId,
+                        type: 'masuk',
+                        amount: masukTotal,
+                        details: masukDetails,
+                        exchangeStatus: 'sudah',
+                        isBalancing: true,
+                        receivedDetails: [],
+                        totalReceived: 0,
+                        description: `Balancing (Penyesuaian Masuk): ${reason}`,
+                        date: dateStr,
+                        time: timeStr,
+                        monthYear: monthYearStr
+                    };
+                    transactions.push(txMasuk);
+                    deletionLogs.push({ ...txMasuk, vaultSource: vault.name, reason: `⚖️ BALANCING MASUK: ${reason}`, deletedAt: `${dateStr} ${timeStr}` });
+                }
 
-                let balancingTx = {
-                    id: Date.now(),
-                    vaultId,
-                    type: txType,
-                    amount: absDiff,
-                    details,
-                    exchangeStatus: 'sudah',
-                    receivedDetails: [],
-                    totalReceived: 0,
-                    description: `Balancing: ${reason} (Sistem: ${formatRp(currentVaultBalance)} ➔ Riil: ${formatRp(targetAmount)})`,
-                    date: now.toLocaleDateString('id-ID'),
-                    time: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-                    monthYear: new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(now)
-                };
-
-                transactions.push(balancingTx);
-
-                deletionLogs.push({
-                    id: balancingTx.id,
-                    vaultSource: vault.name,
-                    type: txType,
-                    amount: absDiff,
-                    description: balancingTx.description,
-                    reason: `⚖️ BALANCING: ${reason}`,
-                    deletedAt: `${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID')}`
-                });
+                // 5. Masukkan transaksi Pengurangan (jika ada kelebihan di sistem)
+                if (keluarTotal > 0) {
+                    let txKeluar = {
+                        id: timestamp + 1,
+                        vaultId,
+                        type: 'keluar',
+                        amount: keluarTotal,
+                        details: keluarDetails,
+                        exchangeStatus: 'sudah',
+                        isBalancing: true,
+                        receivedDetails: [],
+                        totalReceived: 0,
+                        description: `Balancing (Penyesuaian Keluar): ${reason}`,
+                        date: dateStr,
+                        time: timeStr,
+                        monthYear: monthYearStr
+                    };
+                    transactions.push(txKeluar);
+                    deletionLogs.push({ ...txKeluar, vaultSource: vault.name, reason: `⚖️ BALANCING KELUAR: ${reason}`, deletedAt: `${dateStr} ${timeStr}` });
+                }
 
                 syncToCloud();
-                alert(`Balancing berhasil! Penyesuaian sebesar ${formatRp(absDiff)} (${txType.toUpperCase()}) telah diterapkan.`);
+                
+                let diffMsg = "";
+                if (masukTotal > 0) diffMsg += `• Sistem Otomatis Menambah: ${formatRp(masukTotal)}\n`;
+                if (keluarTotal > 0) diffMsg += `• Sistem Otomatis Mengurangi: ${formatRp(keluarTotal)}\n`;
+                
+                alert(`Balancing berhasil diproses!\n\n${diffMsg}\nSistem sekarang sudah disesuaikan agar sama persis dengan permen riil di lapangan.`);
                 return true;
             }
             alert('Master PIN salah! Balancing dibatalkan.');
@@ -1070,7 +1133,7 @@
                 } else if (tx.type === 'keluar' && tx.details) {
                     tx.details.forEach(d => { if (d.isRusak) totalRusakMix -= d.amount; else if (totals.hasOwnProperty(d.denomKey)) totals[d.denomKey] -= d.amount; });
                 }
-                if (vault.id === 'b2' && tx.type === 'keluar' && tx.exchangeStatus === 'sudah' && tx.receivedDetails) {
+                if (!tx.isBalancing && vault.id === 'b2' && tx.type === 'keluar' && tx.exchangeStatus === 'sudah' && tx.receivedDetails) {
                     tx.receivedDetails.forEach(d => { if (d.isRusak) totalRusakMix += d.amount; else if (totals.hasOwnProperty(d.denomKey)) totals[d.denomKey] += d.amount; });
                 }
             }
@@ -1161,10 +1224,16 @@
         filtered.slice().reverse().forEach(tx => {
             let statusTd = '';
             if (isB2 && tx.type === 'keluar') {
-                statusTd = tx.exchangeStatus === 'sudah' ? 
-                    `<td><button onclick="openExchangeModal(${tx.id})" style="padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; background: #c8e6c9; color: #2e7d32;">🟢 Diterima</button></td>` : 
-                    `<td><button onclick="openExchangeModal(${tx.id})" style="padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; background: #ffcdd2; color: #c62828;">🔴 Belum</button></td>`;
-            } else if (isB2) { statusTd = `<td>-</td>`; }
+                if (tx.isBalancing) {
+                    statusTd = `<td>-</td>`;
+                } else {
+                    statusTd = tx.exchangeStatus === 'sudah' ? 
+                        `<td><button onclick="openExchangeModal(${tx.id})" style="padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; background: #c8e6c9; color: #2e7d32;">🟢 Diterima</button></td>` : 
+                        `<td><button onclick="openExchangeModal(${tx.id})" style="padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; background: #ffcdd2; color: #c62828;">🔴 Belum</button></td>`;
+                }
+            } else if (isB2) { 
+                statusTd = `<td>-</td>`; 
+            }
 
             html += `<tr>
                 <td><button class="btn-edit" onclick="requestEditTx(${tx.id})">✏️</button><button class="btn-trash" onclick="requestDeleteTx(${tx.id})">🗑️</button></td>
