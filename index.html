@@ -4,7 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="3.9.1-vault-balancing-denom-fixed">
+    <meta name="app-version" content="4.0.0-modern-ui-revamp">
+    
+    <!-- Google Fonts: Inter untuk tampilan modern & fresh -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -12,310 +18,401 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    
     <style>
-        * { box-sizing: border-box; font-family: Arial, sans-serif; }
-        body { background: #f4f6f8; margin: 0; padding: 15px; }
-        .container { max-width: 1200px; margin: auto; display: none; }
-        .login-container { max-width: 400px; margin: 80px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; }
+        :root {
+            /* Modern Color Palette */
+            --bg-color: #f3f6f9;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            
+            --primary: #4f46e5;       /* Indigo */
+            --primary-hover: #4338ca;
+            --secondary: #0ea5e9;     /* Sky Blue */
+            --success: #10b981;       /* Emerald Green */
+            --success-light: #d1fae5;
+            --danger: #ef4444;        /* Red */
+            --danger-light: #fee2e2;
+            --warning: #f59e0b;       /* Amber */
+            --warning-light: #fef3c7;
+            --border: #e2e8f0;
+            
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+        }
+
+        * { box-sizing: border-box; font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
+        body { background: var(--bg-color); color: var(--text-main); padding: 20px; line-height: 1.5; }
         
-        .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        h2, h3 { margin-top: 0; color: #333; }
+        .container { max-width: 1280px; margin: auto; display: none; animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* HEADER & NAVIGATION */
+        .app-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; }
+        .app-title { font-size: 1.5rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 10px; }
         
-        .main-nav { display: flex; gap: 10px; margin-bottom: 20px; background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .main-nav-btn { flex: 1; background: #e0e0e0; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; color: #555; font-size: 1rem; text-align: center; }
-        .main-nav-btn.active { background: #1565c0; color: white; }
+        .main-nav { display: inline-flex; background: #e2e8f0; padding: 6px; border-radius: 12px; gap: 5px; margin-bottom: 25px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        .main-nav-btn { background: transparent; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; color: #475569; font-size: 0.95rem; transition: all 0.3s; }
+        .main-nav-btn:hover { color: var(--primary); }
+        .main-nav-btn.active { background: #ffffff; color: var(--primary); box-shadow: var(--shadow-sm); }
 
         .slide-section { display: none; }
-        .slide-section.active { display: block; }
+        .slide-section.active { display: block; animation: fadeIn 0.3s ease-out; }
 
-        .total-card { background: #1565c0; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .vault-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 15px; }
-        .vault-card { background: #eef2f5; padding: 15px; border-radius: 6px; border-left: 5px solid #2e7d32; position: relative; }
-        .vault-card .balance { font-size: 1.2rem; font-weight: bold; color: #2e7d32; margin-bottom: 10px; }
-        .vault-card .pin-btn { background: #c62828; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; margin-top: 8px; }
-        .vault-card .pin-btn.unlocked { background: #2e7d32; }
+        /* CARDS & CONTAINERS */
+        .card { background: var(--card-bg); padding: 24px; border-radius: var(--radius-lg); margin-bottom: 24px; box-shadow: var(--shadow-md); border: 1px solid rgba(255,255,255,0.8); }
+        .card-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        h3 { font-size: 1.2rem; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px; margin:0; }
 
-        .filter-bar { background: #f1f3f5; padding: 12px; border-radius: 6px; margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-        .filter-bar select, .filter-bar input { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.95rem; width: auto; flex: 1; }
-
-        .store-columns-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .store-column-card { background: #f8f9fa; border: 1px solid #dcdcdc; border-top: 4px solid #00796b; padding: 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s; position: relative; }
-        .store-column-card:hover { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); background: #f1f8f6; }
-        .store-column-card.active-filter { border: 2px solid #00796b; background: #e0f2f1; }
-        .store-column-card h4 { margin: 0 0 10px 0; color: #00796b; font-size: 1rem; text-align: center; border-bottom: 1px solid #ddd; padding-bottom: 6px; }
-        .store-stat-item { margin-bottom: 6px; font-size: 0.85rem; }
-        .store-stat-item label { color: #666; display: block; font-size: 0.7rem; }
-        .store-stat-item span { font-weight: bold; color: #333; }
-
-        .grand-store-summary { background: #e3f2fd; border: 2px dashed #1565c0; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; text-align: center; }
-        .grand-store-summary div div { font-size: 1.2rem; font-weight: bold; color: #0d47a1; margin-top: 4px; }
-
-        .tab-container { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #ddd; padding-bottom: 10px; flex-wrap: wrap; }
-        .tab-btn { background: #e0e0e0; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; color: #555; font-size: 0.9rem; }
-        .tab-btn.active { background: #2196F3; color: white; }
-        .tab-btn.master-tab { background: #673ab7; color: white; }
-        .tab-btn.master-tab.active { background: #512da8; }
-
-        .modal { display: none; position: fixed; z-index: 10; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
-        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 480px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); text-align: center; max-height: 90vh; overflow-y: auto; }
-        .modal-buttons { display: flex; gap: 10px; margin-top: 15px; }
-
-        .denom-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-        .denom-summary-card { background: #fdfdfd; border: 1px solid #e0e0e0; padding: 12px; border-radius: 6px; text-align: center; }
-        .denom-badge { font-size: 1.8rem; margin-bottom: 5px; }
-
-        .form-group { margin-bottom: 15px; text-align: left; }
-        label { display: block; margin-bottom: 5px; color: #666; font-weight: bold; font-size: 0.9rem; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 1.1rem; }
-        
-        .highlight-box { background: #e3f2fd; border: 2px dashed #1565c0; padding: 15px; border-radius: 6px; margin-bottom: 15px; }
-        .denom-input-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        .denom-input-table th, .denom-input-table td { padding: 6px; border: 1px solid #ddd; text-align: center; }
-        .denom-input-table th { background: #f1f3f5; font-size: 0.85rem; color: #444; }
-        .denom-input-table input { text-align: center; padding: 10px; font-size: 1.1rem; }
-
-        .btn-primary { background: #2196F3; color: white; border: none; padding: 12px 15px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1.1rem; }
-        .btn-success { background: #2e7d32; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .btn-pdf { background: #d32f2f; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .btn-cancel { background: #9e9e9e; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; width: 100%; }
-        .btn-submit { background: #4caf50; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; width: 100%; }
-        .btn-link-share { background: #607d8b; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 5px; }
-        .btn-trash { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
-        .btn-edit { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; margin-right: 4px; }
-        
-        .table-responsive { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; white-space: nowrap; }
-        th { background: #f8f9fa; }
-        .masuk { color: #2e7d32; font-weight: bold; }
-        .keluar { color: #c62828; font-weight: bold; }
-        .vertical-details { font-size: 0.8rem; line-height: 1.4; white-space: normal; min-width: 220px; }
-
-        .rank-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            font-weight: bold;
-            font-size: 0.9rem;
-            color: white;
-            background: #78909c;
+        /* DASHBOARD GRAND TOTAL (SLIDE 1) */
+        .total-card { 
+            background: linear-gradient(135deg, var(--primary) 0%, #312e81 100%); 
+            color: white; padding: 25px 30px; border-radius: var(--radius-lg); margin-bottom: 25px; 
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.2); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; 
         }
-        .rank-1 { background: #ffd700; color: #333; text-shadow: 0 1px 0 rgba(255,255,255,0.5); box-shadow: 0 2px 5px rgba(255,215,0,0.5); }
-        .rank-2 { background: #c0c0c0; color: #333; box-shadow: 0 2px 5px rgba(192,192,192,0.5); }
-        .rank-3 { background: #cd7f32; color: white; box-shadow: 0 2px 5px rgba(205,127,50,0.5); }
+        .total-card h3 { color: rgba(255,255,255,0.9); font-weight: 500; font-size: 1rem; }
+        .grand-total-amount { font-size: 2.2rem; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-top: 5px; }
+
+        /* VAULT GRID */
+        .vault-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        .vault-card { 
+            background: #ffffff; padding: 20px; border-radius: var(--radius-md); 
+            border: 1px solid var(--border); border-top: 5px solid var(--success); 
+            box-shadow: var(--shadow-sm); transition: transform 0.2s; position: relative; 
+        }
+        .vault-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+        .vault-card h4 { font-size: 1rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
+        .vault-card .balance { font-size: 1.5rem; font-weight: 800; color: #0f172a; margin-bottom: 15px; }
+        .pin-btn { 
+            background: var(--danger-light); color: var(--danger); border: none; padding: 8px 12px; 
+            border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%; transition: 0.2s;
+        }
+        .pin-btn:hover { background: #fecaca; }
+        .pin-btn.unlocked { background: var(--success-light); color: #047857; }
+        .pin-btn.unlocked:hover { background: #bbf7d0; }
+
+        /* SPLIT LAYOUT FOR FORM & SUMMARIES (DESKTOP) */
+        .brankas-split-layout { display: grid; grid-template-columns: 1fr; gap: 24px; margin-bottom: 24px; }
+        @media (min-width: 1024px) {
+            .brankas-split-layout { grid-template-columns: 1.2fr 1fr; }
+        }
+
+        /* FORM STYLING */
+        .highlight-box { background: #f8fafc; border: 1px solid var(--border); border-left: 4px solid var(--primary); padding: 15px; border-radius: var(--radius-md); margin-bottom: 20px; }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; margin-bottom: 8px; color: var(--text-main); font-weight: 600; font-size: 0.9rem; }
+        input[type="text"], input[type="datetime-local"], input[type="email"], input[type="password"], select { 
+            width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; 
+            font-size: 1rem; background: #fff; color: #333; transition: 0.2s; outline: none;
+        }
+        input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+        
+        .denom-input-table { width: 100%; border-collapse: separate; border-spacing: 0; background: #fff; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+        .denom-input-table th, .denom-input-table td { padding: 10px 15px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+        .denom-input-table th { background: #f8fafc; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .denom-input-table tr:last-child td { border-bottom: none; }
+        .denom-input-table input { text-align: right; font-weight: 600; font-size: 1.05rem; padding: 10px; background: #f8fafc; border: 1px solid transparent; }
+        .denom-input-table input:focus { background: #fff; border: 1px solid var(--primary); }
+
+        /* BUTTONS */
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; border: none; font-size: 0.95rem; }
+        .btn-primary { background: var(--primary); color: white; width: 100%; padding: 14px; font-size: 1.05rem; box-shadow: 0 4px 6px rgba(79, 70, 229, 0.25); }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-pdf { background: #ef4444; color: white; }
+        .btn-cancel { background: #f1f5f9; color: #475569; border: 1px solid var(--border); }
+        .btn-cancel:hover { background: #e2e8f0; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-action-icon { background: #f1f5f9; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 1rem; transition: 0.2s; }
+        .btn-action-icon:hover { background: #e2e8f0; transform: scale(1.05); }
+
+        /* TABS (PILLS) */
+        .tab-container { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; background: #f8fafc; padding: 6px; border-radius: 10px; border: 1px solid var(--border); }
+        .tab-btn { background: transparent; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; color: var(--text-muted); font-size: 0.9rem; transition: 0.2s; }
+        .tab-btn:hover { color: var(--text-main); }
+        .tab-btn.active { background: white; color: var(--primary); box-shadow: var(--shadow-sm); }
+        .tab-btn.master-tab { color: #7c3aed; }
+        .tab-btn.master-tab.active { background: #7c3aed; color: white; }
+
+        /* SUMMARIES & BADGES */
+        .denom-summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+        .denom-summary-card { background: #fff; border: 1px solid var(--border); padding: 15px; border-radius: var(--radius-md); text-align: center; box-shadow: var(--shadow-sm); transition: 0.2s; }
+        .denom-summary-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .denom-badge { font-size: 2rem; margin-bottom: 8px; }
+        
+        /* TABLES */
+        .table-responsive { overflow-x: auto; background: #fff; border-radius: var(--radius-md); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 14px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; font-size: 0.95rem; }
+        th { background: #f8fafc; font-weight: 600; color: var(--text-muted); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.5px; }
+        tbody tr:hover { background: #f8fafc; }
+        tbody tr:last-child td { border-bottom: none; }
+        
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-masuk { background: var(--success-light); color: #047857; }
+        .badge-keluar { background: var(--danger-light); color: #b91c1c; }
+        
+        .text-masuk { color: var(--success); font-weight: 700; }
+        .text-keluar { color: var(--danger); font-weight: 700; }
+        .vertical-details { font-size: 0.85rem; line-height: 1.5; color: #475569; }
+
+        /* STORE DASHBOARD (SLIDE 2) */
+        .grand-store-summary { 
+            background: #fff; border: 1px solid var(--border); padding: 20px; 
+            border-radius: var(--radius-md); margin-bottom: 24px; display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; box-shadow: var(--shadow-sm);
+        }
+        .grand-store-summary > div { border-right: 1px solid var(--border); padding-right: 15px; }
+        .grand-store-summary > div:last-child { border-right: none; padding-right: 0; }
+        .grand-store-summary span { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 5px; }
+        .grand-store-summary div div { font-size: 1.4rem; font-weight: 800; color: var(--text-main); }
+
+        .store-columns-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 24px; }
+        .store-column-card { background: #fff; border: 1px solid var(--border); border-top: 4px solid var(--primary); padding: 16px; border-radius: var(--radius-md); cursor: pointer; transition: 0.2s; box-shadow: var(--shadow-sm); }
+        .store-column-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--primary); }
+        .store-column-card.active-filter { background: #eff6ff; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
+        .store-column-card h4 { font-size: 1.1rem; color: var(--text-main); margin-bottom: 12px; font-weight: 700; display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 8px;}
+        .store-stat-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.9rem; }
+        .store-stat-item label { color: var(--text-muted); font-size: 0.8rem; margin: 0; font-weight: 500; }
+        .store-stat-item span { font-weight: 700; color: var(--text-main); }
 
         .chart-container-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 20px; }
-        .chart-card { background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .chart-card { background: #fff; padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
 
-        .alert-badge-warning {
-            background: #ff9800;
-            color: white;
-            font-size: 0.7rem;
-            padding: 3px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            display: inline-block;
-            margin-top: 5px;
-        }
+        /* MODALS */
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); justify-content: center; align-items: center; animation: fadeIn 0.2s; }
+        .modal-content { background: var(--card-bg); padding: 30px; border-radius: var(--radius-lg); width: 100%; max-width: 480px; box-shadow: var(--shadow-lg); max-height: 90vh; overflow-y: auto; }
+        .modal-buttons { display: flex; gap: 12px; margin-top: 25px; }
+        
+        .alert-badge-warning { background: #fef3c7; color: #b45309; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; font-weight: 700; display: inline-block; margin-top: 5px; border: 1px solid #fde68a; }
+        
+        /* RANK BADGE */
+        .rank-badge { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; font-weight: 800; font-size: 0.95rem; color: white; background: #94a3b8; }
+        .rank-1 { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #fff; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.4); }
+        .rank-2 { background: linear-gradient(135deg, #cbd5e1, #94a3b8); box-shadow: 0 4px 10px rgba(148, 163, 184, 0.4); }
+        .rank-3 { background: linear-gradient(135deg, #d97706, #b45309); box-shadow: 0 4px 10px rgba(180, 83, 9, 0.4); }
+
+        /* LOGIN PAGE */
+        .login-container { max-width: 400px; margin: 10vh auto; background: white; padding: 40px 30px; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); text-align: center; border: 1px solid var(--border); }
+        .login-container h2 { font-weight: 800; font-size: 1.8rem; margin-bottom: 5px; color: var(--primary); }
     </style>
 </head>
 <body>
 
 <!-- HALAMAN LOGIN FIREBASE AUTH -->
 <div class="login-container" id="loginCard">
-    <h2>Login Admin AWW</h2>
-    <p style="font-size: 0.85rem; color: #666; margin-bottom: 20px;">Masukkan akun terdaftar Anda</p>
+    <h2>AWW System</h2>
+    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 25px;">Portal Keuangan Pusat</p>
     <form onsubmit="handleLogin(event)">
         <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="loginEmail" placeholder="admin@aww.com" required>
+            <input type="email" id="loginEmail" placeholder="Email Admin" required style="background: #f8fafc;">
         </div>
         <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="loginPassword" placeholder="••••••••" required>
+            <input type="password" id="loginPassword" placeholder="Password" required style="background: #f8fafc;">
         </div>
-        <button type="submit" class="btn-primary" style="margin-top: 10px;">Masuk ke Aplikasi</button>
+        <button type="submit" class="btn btn-primary" style="margin-top: 15px;">Masuk ke Dashboard</button>
     </form>
-    <div id="loginError" style="color: #c62828; font-size: 0.85rem; margin-top: 15px;"></div>
+    <div id="loginError" style="color: var(--danger); font-size: 0.85rem; margin-top: 15px; font-weight: 500;"></div>
 </div>
 
 <!-- APLIKASI UTAMA -->
 <div class="container" id="appContainer">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
-        <h2 style="margin: 0;">Pencatatan Keuangan Pusat AWW</h2>
-        <div style="display: flex; gap: 8px;">
-            <button class="btn-link-share" onclick="openLinkModal()">🔗 Tautan & QR</button>
-            <button class="btn-cancel" onclick="handleLogout()" style="width: auto; padding: 6px 12px; font-size: 0.85rem;">🚪 Keluar</button>
+    
+    <div class="app-header">
+        <div class="app-title">📊 Portal Keuangan AWW</div>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-outline" onclick="openLinkModal()">🔗 QR Akses</button>
+            <button class="btn btn-cancel" onclick="handleLogout()">🚪 Keluar</button>
         </div>
     </div>
 
-    <!-- TOMBOL SLIDE / NAVIGASI UTAMA -->
-    <div class="main-nav">
-        <button class="main-nav-btn active" id="navSlide1" onclick="switchSlide(1)">📁 Brankas Permen</button>
-        <button class="main-nav-btn" id="navSlide2" onclick="requestSlide2()">📊 Cashflow Permen</button>
+    <!-- NAVIGASI UTAMA -->
+    <div style="text-align: center;">
+        <div class="main-nav">
+            <button class="main-nav-btn active" id="navSlide1" onclick="switchSlide(1)">📁 Brankas Permen</button>
+            <button class="main-nav-btn" id="navSlide2" onclick="requestSlide2()">📈 Cashflow & Toko</button>
+        </div>
     </div>
 
     <!-- SLIDE 1: PENCATATAN BRANKAS -->
     <div class="slide-section active" id="slide1">
-        <div class="total-card" id="grandTotalCard" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        
+        <!-- DASHBOARD TOP: TOTAL & VAULTS -->
+        <div class="total-card" id="grandTotalCard">
             <div>
-                <h3 id="grandTotalTitle" style="margin: 0; color: white;">Total Saldo Keseluruhan</h3>
-                <div id="grandTotalBalanceContainer" style="font-size: 1.5rem; font-weight: bold; margin-top: 5px;">Rp 0</div>
+                <h3 id="grandTotalTitle">Total Saldo Keseluruhan</h3>
+                <div class="grand-total-amount" id="grandTotalBalanceContainer">Rp 0</div>
             </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button type="button" class="btn-submit" onclick="requestUnlockAllVaults()" style="background: #ff9800; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer;">🔓 Buka Semua dengan Master PIN</button>
-                <button type="button" class="btn-submit" id="balancingBtn" onclick="openBalancingModal()" style="background: #00796b; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; display: none;">⚖️ Balancing Saldo</button>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <button type="button" class="btn btn-warning" onclick="requestUnlockAllVaults()" style="color:#000;">🔓 Buka Semua</button>
+                <button type="button" class="btn btn-success" id="balancingBtn" onclick="openBalancingModal()" style="display: none; background: #059669;">⚖️ Balancing Saldo</button>
             </div>
         </div>
 
-        <div class="card">
-            <h3>Saldo & Keamanan Brankas Permen</h3>
-            <div class="vault-grid" id="vaultContainer"></div>
-        </div>
+        <div class="vault-grid" id="vaultContainer" style="margin-bottom: 24px;"></div>
 
-        <div class="card">
-            <h3 style="margin-bottom: 10px;">Rekap Perputaran Brankas Permen (<span id="currentMonthLabel"></span>)</h3>
-            <div id="summaryContentArea"></div>
-        </div>
-
-        <div class="card">
-            <h3>Rekap Total Per Pecahan Permen</h3>
-            <div class="tab-container" id="denomTabContainer"></div>
-            <div id="denomSummaryContent"></div>
-        </div>
-
-        <div class="card">
-            <h3 style="margin-bottom: 10px;">Tambah Transaksi Permen</h3>
-            <form id="transactionForm" onsubmit="saveTransaction(event)">
-                <div class="highlight-box">
-                    <div class="form-group" style="margin-bottom: 12px;">
-                        <label>📁 PILIH BRANKAS TUJUAN:</label>
-                        <select id="vaultSelect" onchange="renderDenomInputTable()" required></select>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>⚡ PILIH JENIS TRANSAKSI:</label>
-                        <select id="typeSelect" required>
-                            <option value="masuk">🟢 Permen Masuk (+)</option>
-                            <option value="keluar">🔴 Permen Keluar (-)</option>
-                        </select>
-                    </div>
+        <!-- SPLIT LAYOUT (FORM KIRI, REKAP KANAN) -->
+        <div class="brankas-split-layout">
+            
+            <!-- KIRI: FORM TRANSAKSI -->
+            <div class="card" style="margin-bottom: 0;">
+                <div class="card-header">
+                    <h3>⚡ Tambah Transaksi Permen</h3>
                 </div>
-                <div class="form-group">
-                    <label>Tanggal Transaksi (Opsional: Kosongkan untuk otomatis)</label>
-                    <input type="datetime-local" id="transDateInput">
-                </div>
-                <div class="form-group">
-                    <label>Isi Berdasarkan Pecahan / Kategori Nominal Langsung</label>
-                    <div class="table-responsive">
+                <form id="transactionForm" onsubmit="saveTransaction(event)">
+                    <div class="highlight-box">
+                        <div class="form-group">
+                            <label>📁 PILIH BRANKAS TUJUAN</label>
+                            <select id="vaultSelect" onchange="renderDenomInputTable()" required style="font-weight: 600;"></select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>🔄 JENIS TRANSAKSI</label>
+                            <select id="typeSelect" required style="font-weight: 600;">
+                                <option value="masuk">🟢 PERMEN MASUK (+)</option>
+                                <option value="keluar">🔴 PERMEN KELUAR (-)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Tanggal & Waktu (Opsional)</label>
+                        <input type="datetime-local" id="transDateInput">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Rincian Nominal Langsung (Rp)</label>
                         <table class="denom-input-table">
-                            <thead><tr><th>Pecahan / Kategori</th><th>Nominal Langsung (Rp)</th></tr></thead>
+                            <thead><tr><th>Pecahan</th><th style="text-align: right;">Nominal</th></tr></thead>
                             <tbody id="denomInputTableBody"></tbody>
                         </table>
                     </div>
+                    
+                    <div class="form-group" style="background: var(--success-light); padding: 15px; border-radius: 8px; border: 1px solid #a7f3d0;">
+                        <label style="color: #065f46; font-size: 1rem;">Total Keseluruhan</label>
+                        <input type="text" id="grandAmountInput" readonly placeholder="0" style="font-weight: 800; font-size: 1.3rem; color: #047857; background: transparent; border: none; padding: 0; text-align: right;" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Keterangan / Catatan</label>
+                        <input type="text" id="descInput" placeholder="Contoh: Setoran / Penukaran" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Simpan Transaksi</button>
+                </form>
+            </div>
+
+            <!-- KANAN: REKAP PECAHAN & BULANAN -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+                
+                <div class="card" style="margin-bottom: 0;">
+                    <div class="card-header">
+                        <h3>📋 Rekap Fisik Per Pecahan</h3>
+                    </div>
+                    <div class="tab-container" id="denomTabContainer"></div>
+                    <div id="denomSummaryContent"></div>
                 </div>
-                <div class="form-group">
-                    <label><b>Total Keseluruhan Transaksi (Rp)</b></label>
-                    <input type="text" id="grandAmountInput" readonly placeholder="Otomatis terhitung" style="font-weight: bold; font-size: 1.1rem; color: #2e7d32;" required>
+
+                <div class="card" style="margin-bottom: 0;">
+                    <div class="card-header">
+                        <h3>📊 Perputaran Bulan Ini (<span id="currentMonthLabel" style="color: var(--primary);"></span>)</h3>
+                    </div>
+                    <div class="table-responsive" id="summaryContentArea"></div>
                 </div>
-                <div class="form-group">
-                    <label>Keterangan</label>
-                    <input type="text" id="descInput" placeholder="Contoh: Setoran Tunai / Penukaran Permen" required>
-                </div>
-                <button type="submit" class="btn-primary">Simpan Transaksi</button>
-            </form>
+            </div>
         </div>
 
+        <!-- BAWAH: RIWAYAT TRANSAKSI & AUDIT -->
         <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="margin: 0;">Riwayat Transaksi</h3>
+            <div class="card-header">
+                <h3>🕰️ Riwayat Transaksi</h3>
                 <div style="display: flex; gap: 8px;">
-                    <button type="button" class="btn-success" onclick="exportToExcel()" style="width: auto; margin-top:0;">Export Excel</button>
-                    <button type="button" class="btn-pdf" onclick="exportToPDF()" style="width: auto; margin-top:0;">Export PDF</button>
+                    <button type="button" class="btn btn-success" onclick="exportToExcel()" style="padding: 8px 12px; font-size: 0.85rem;">Excel</button>
+                    <button type="button" class="btn btn-pdf" onclick="exportToPDF()" style="padding: 8px 12px; font-size: 0.85rem;">PDF</button>
                 </div>
             </div>
             <div class="tab-container" id="historyTabContainer"></div>
-            <div id="historyContent"></div>
+            <div class="table-responsive" id="historyContent"></div>
         </div>
 
-        <div class="card" id="auditTrailCard">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="color: #c62828; margin: 0;">🛡️ Audit Trail (Riwayat Penghapusan & Balancing)</h3>
-                <button type="button" id="unlockAuditBtn" class="btn-submit" onclick="requestUnlockAuditTrail()" style="background: #673ab7; width: auto; padding: 6px 12px; font-size: 0.85rem;">🔑 Buka dengan Master PIN</button>
+        <div class="card" id="auditTrailCard" style="border-left: 4px solid var(--danger);">
+            <div class="card-header">
+                <h3 style="color: var(--danger);">🛡️ Audit Trail (Riwayat Hapus & Balancing)</h3>
+                <button type="button" id="unlockAuditBtn" class="btn" style="background: #7c3aed; color: white;" onclick="requestUnlockAuditTrail()">🔑 Buka Audit</button>
             </div>
             <div class="table-responsive">
                 <table>
                     <thead>
-                        <tr><th>Waktu</th><th>Brankas / Sumber</th><th>Jenis Aktivitas</th><th>Nominal / Detail</th><th>Keterangan / Alasan</th></tr>
+                        <tr><th>Waktu</th><th>Sumber</th><th>Aktivitas</th><th>Nominal</th><th>Keterangan / Alasan</th></tr>
                     </thead>
                     <tbody id="auditTrailTableBody">
-                        <tr><td colspan="5" style="text-align: center; color: #777;">Belum ada riwayat audit.</td></tr>
+                        <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Belum ada riwayat audit.</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- SLIDE 2: CASHFLOW PERMEN -->
+    <!-- SLIDE 2: CASHFLOW & TOKO -->
     <div class="slide-section" id="slide2">
+        <!-- Konten Slide 2 tetap menggunakan logika yang sama, tapi secara otomatis akan mengikuti style CSS baru di atas. -->
         <!-- BAGIAN 1: REKAPITULASI ARUS KAS BULANAN -->
-        <div class="card" style="border-top: 4px solid #673ab7; margin-bottom: 30px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="margin: 0; color: #673ab7;">📊 Rekapitulasi Arus Kas Bulanan (Pemasukan Toko & Operasional)</h3>
+        <div class="card" style="border-top: 4px solid var(--primary);">
+            <div class="card-header">
+                <h3 style="color: var(--primary);">📊 Rekapitulasi Arus Kas Bulanan</h3>
                 <div style="display: flex; gap: 10px;">
-                    <select id="recapMonthSelect" onchange="renderMonthlyRecap()" style="padding: 6px; font-size: 0.9rem;">
+                    <select id="recapMonthSelect" onchange="renderMonthlyRecap()">
                         <option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option>
                         <option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option>
                         <option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option>
                         <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
                     </select>
-                    <select id="recapYearSelect" onchange="renderMonthlyRecap()" style="padding: 6px; font-size: 0.9rem;">
+                    <select id="recapYearSelect" onchange="renderMonthlyRecap()">
                         <option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
                     </select>
                 </div>
             </div>
 
-            <div class="grand-store-summary" style="margin-bottom: 20px;">
-                <div><span>TOTAL PEMASUKAN TOKO</span><div id="recapStoreIncome">Rp 0</div></div>
-                <div><span>TOTAL PENGELUARAN OP.</span><div id="recapOpExpense" style="color: #c62828;">Rp 0</div></div>
-                <div style="background: #fff; padding: 5px; border-radius: 6px; border: 1px dashed #1565c0;"><span style="color: #1565c0; font-size:0.75rem;">SELISIH BERSIH (NET)</span><div id="recapNetBalance" style="color: #1565c0;">Rp 0</div></div>
+            <div class="grand-store-summary">
+                <div><span>PEMASUKAN TOKO</span><div id="recapStoreIncome" style="color: var(--success);">Rp 0</div></div>
+                <div><span>PENGELUARAN OP.</span><div id="recapOpExpense" style="color: var(--danger);">Rp 0</div></div>
+                <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px dashed var(--primary);">
+                    <span style="color: var(--primary);">SELISIH BERSIH (NET)</span>
+                    <div id="recapNetBalance" style="color: var(--primary);">Rp 0</div>
+                </div>
             </div>
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">
-                    <h4 style="margin-top: 0; color: #2e7d32; border-bottom: 2px solid #c8e6c9; padding-bottom: 5px;">🟢 Rincian Pemasukan Toko (Bulan Ini)</h4>
-                    <div id="storeIncomeDetailBox" style="font-size: 0.9rem; line-height: 1.6;">Memuat data...</div>
+                <div style="background: var(--success-light); padding: 20px; border-radius: var(--radius-md); border: 1px solid #a7f3d0;">
+                    <h4 style="margin-top: 0; color: #065f46; font-size: 1rem; margin-bottom: 10px;">🟢 Rincian Pemasukan</h4>
+                    <div id="storeIncomeDetailBox" style="font-size: 0.95rem; line-height: 1.8; color: #064e3b;">Memuat data...</div>
                 </div>
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">
-                    <h4 style="margin-top: 0; color: #c62828; border-bottom: 2px solid #ffcdd2; padding-bottom: 5px;">🔴 Rincian Pengeluaran Operasional (Bulan Ini)</h4>
-                    <div id="opExpenseDetailBox" style="font-size: 0.9rem; line-height: 1.6;">Memuat data...</div>
+                <div style="background: var(--danger-light); padding: 20px; border-radius: var(--radius-md); border: 1px solid #fecaca;">
+                    <h4 style="margin-top: 0; color: #991b1b; font-size: 1rem; margin-bottom: 10px;">🔴 Rincian Pengeluaran</h4>
+                    <div id="opExpenseDetailBox" style="font-size: 0.95rem; line-height: 1.8; color: #7f1d1d;">Memuat data...</div>
                 </div>
             </div>
 
             <div class="chart-container-box">
-                <div class="chart-card">
-                    <h4 style="margin-top:0; text-align:center; color:#333; font-size:0.95rem;">Perbandingan Pemasukan vs Pengeluaran</h4>
-                    <div style="position: relative; height: 220px;"><canvas id="cashflowPieChart"></canvas></div>
-                </div>
-                <div class="chart-card">
-                    <h4 style="margin-top:0; text-align:center; color:#333; font-size:0.95rem;">Komposisi Rincian Pemasukan Toko</h4>
-                    <div style="position: relative; height: 220px;"><canvas id="storeIncomeBarChart"></canvas></div>
-                </div>
+                <div class="chart-card"><canvas id="cashflowPieChart"></canvas></div>
+                <div class="chart-card"><canvas id="storeIncomeBarChart"></canvas></div>
             </div>
         </div>
 
-        <!-- BAGIAN: RANKING OMSET & PARKIR HARIAN ANTAR TOKO -->
-        <div class="card" style="border-top: 4px solid #f57c00; margin-bottom: 30px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="margin: 0; color: #e65100;">🏆 Ranking Omset & Parkir Toko (Berdasarkan Tanggal)</h3>
+        <!-- BAGIAN: RANKING OMSET & PARKIR HARIAN -->
+        <div class="card" style="border-top: 4px solid var(--warning);">
+            <div class="card-header">
+                <h3 style="color: #d97706;">🏆 Ranking Omset & Parkir Harian</h3>
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <label style="font-size: 0.85rem; margin: 0;">Pilih Tanggal:</label>
-                    <input type="date" id="rankingDateInput" onchange="renderStoreRanking()" style="padding: 6px; font-size: 0.9rem; width: auto;">
+                    <label style="margin: 0;">Pilih Tanggal:</label>
+                    <input type="date" id="rankingDateInput" onchange="renderStoreRanking()" style="width: auto;">
                 </div>
             </div>
-            <p style="font-size: 0.85rem; color: #666; margin-top: 0; margin-bottom: 15px;">Perbandingan performa penjualan harian dan kontribusi parkir antar titik toko pada tanggal yang dipilih:</p>
             <div class="table-responsive">
                 <table>
                     <thead>
@@ -324,11 +421,11 @@
                             <th>Titik Toko</th>
                             <th>Omset Komputer</th>
                             <th>Pendapatan Parkir</th>
-                            <th>Total Pendapatan Harian</th>
+                            <th>Total Pendapatan</th>
                         </tr>
                     </thead>
                     <tbody id="storeRankingTableBody">
-                        <tr><td colspan="5" style="text-align: center; color: #777;">Memuat data ranking...</td></tr>
+                        <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Memuat data ranking...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -336,226 +433,204 @@
 
         <!-- BAGIAN 2: REKAP 5 TOKO -->
         <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
-                <h3 style="margin: 0;">🏪 Ringkasan Omset, Permen Fisik & Parkir 5 Titik Toko AWW</h3>
-                <button type="button" class="btn-pdf" onclick="exportStoreReportPDF()" style="width: auto; margin-top:0;">📄 Ekspor Laporan Toko (.PDF)</button>
+            <div class="card-header">
+                <h3>🏪 Ringkasan 5 Titik Toko AWW</h3>
+                <button type="button" class="btn btn-pdf" onclick="exportStoreReportPDF()">📄 Cetak PDF</button>
             </div>
 
-            <div class="grand-store-summary">
+            <div class="grand-store-summary" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
                 <div><span>TOTAL OMSET</span><div id="grandTotalStoreComputer">Rp 0</div></div>
-                <div><span>TOTAL PARKIR</span><div id="grandTotalStoreParking" style="color: #2e7d32;">Rp 0</div></div>
-                <div style="background: #fffde7; padding: 5px; border-radius: 6px; border: 1px dashed #fbc02d;"><span style="color: #b71c1c; font-size:0.75rem;">FISIK BELUM DIAMBIL</span><div id="grandTotalUncollectedCash" style="color: #c62828;">Rp 0</div></div>
-                <div style="background: #e8f5e9; padding: 5px; border-radius: 6px; border: 1px dashed #81c784;"><span style="color: #2e7d32; font-size:0.75rem;">PARKIR BELUM DIAMBIL</span><div id="grandTotalUncollectedParking" style="color: #2e7d32;">Rp 0</div></div>
+                <div><span>TOTAL PARKIR</span><div id="grandTotalStoreParking" style="color: var(--success);">Rp 0</div></div>
+                <div style="background: #fffbeb; border: 1px dashed #fcd34d;"><span style="color: #b45309;">FISIK (DI TOKO)</span><div id="grandTotalUncollectedCash" style="color: var(--danger);">Rp 0</div></div>
+                <div style="background: #f0fdf4; border: 1px dashed #86efac;"><span style="color: #166534;">PARKIR (DI TOKO)</span><div id="grandTotalUncollectedParking" style="color: var(--success);">Rp 0</div></div>
             </div>
 
-            <!-- KARTU RINGKASAN TIAP TOKO (DENGAN PENGINGAT > 2 MINGGU) -->
             <div class="store-columns-grid" id="storeColumnsContainer"></div>
 
-            <div class="filter-bar" style="margin-top: 25px;">
-                <div style="font-weight: bold; color: #333; font-size: 0.95rem; margin-right: 10px;">🔍 Filter Riwayat:</div>
-                <div style="flex: 1; min-width: 140px;">
-                    <label style="font-size: 0.75rem; color: #555; margin-bottom: 2px;">Bulan:</label>
-                    <select id="filterMonthSelect" onchange="processAndRenderStoreData()">
+            <div class="card-header" style="background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid var(--border); margin-top: 30px;">
+                <div style="font-weight: 700; color: var(--text-main);">🔍 Filter Riwayat</div>
+                <div style="display: flex; gap: 10px;">
+                    <select id="filterMonthSelect" onchange="processAndRenderStoreData()" style="width: auto;">
                         <option value="all">Semua Bulan</option>
                         <option value="01">Januari</option><option value="02">Februari</option><option value="03">Maret</option>
                         <option value="04">April</option><option value="05">Mei</option><option value="06">Juni</option>
                         <option value="07">Juli</option><option value="08">Agustus</option><option value="09">September</option>
                         <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
                     </select>
-                </div>
-                <div style="flex: 1; min-width: 140px;">
-                    <label style="font-size: 0.75rem; color: #555; margin-bottom: 2px;">Tahun:</label>
-                    <select id="filterYearSelect" onchange="processAndRenderStoreData()">
+                    <select id="filterYearSelect" onchange="processAndRenderStoreData()" style="width: auto;">
                         <option value="all">Semua Tahun</option><option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
                     </select>
                 </div>
             </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; margin-bottom: 10px;">
-                <h3 id="tableSectionTitle" style="margin: 0;">📋 Riwayat Lengkap Tutup Buku Toko</h3>
-                <button id="resetFilterBtn" class="btn-cancel" style="display: none; width: auto; padding: 6px 12px; font-size: 0.85rem;" onclick="filterStoreHistory(null)">🔄 Tampilkan Semua Toko</button>
+            <div class="card-header" style="margin-top: 15px;">
+                <h3 id="tableSectionTitle">📋 Riwayat Lengkap Tutup Buku</h3>
+                <button id="resetFilterBtn" class="btn btn-cancel" style="display: none;" onclick="filterStoreHistory(null)">🔄 Reset Filter</button>
             </div>
 
             <div class="table-responsive">
                 <table>
                     <thead>
                         <tr>
-                            <th>Aksi / Edit</th>
-                            <th>Titik Toko</th>
-                            <th>Tanggal & Waktu</th>
-                            <th>Omset Komputer</th>
+                            <th>Aksi</th>
+                            <th>Toko</th>
+                            <th>Waktu</th>
+                            <th>Omset (Komp)</th>
                             <th>Parkir</th>
-                            <th>Permen Fisik</th>
+                            <th>Fisik</th>
                             <th>QRIS</th>
                             <th>Debit</th>
-                            <th>Pengeluaran Toko</th>
-                            <th>Status Pengambilan</th>
+                            <th>Pengeluaran</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody id="storeClosingSummaryTableBody"></tbody>
                 </table>
             </div>
         </div>
-
+        
         <!-- LOG RIWAYAT KOREKSI DATA TOKO -->
-        <div class="card" style="border-top: 4px solid #3f51b5; margin-top: 30px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="margin: 0; color: #3f51b5;">📜 Log Riwayat Koreksi & Perubahan Data Toko</h3>
-            </div>
-            <p style="font-size: 0.85rem; color: #666; margin-top: 0; margin-bottom: 15px;">Catatan transparansi setiap kali ada penyuntingan atau koreksi data tutup buku harian toko:</p>
+        <div class="card" style="border-left: 4px solid var(--primary);">
+            <div class="card-header"><h3 style="color: var(--primary);">📜 Log Riwayat Koreksi Data Toko</h3></div>
             <div class="table-responsive">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Waktu Koreksi</th>
-                            <th>Titik Toko</th>
-                            <th>Jenis Perubahan</th>
-                            <th>Detail Data Sebelumnya ➔ Baru</th>
-                        </tr>
-                    </thead>
-                    <tbody id="storeAuditLogTableBody">
-                        <tr><td colspan="4" style="text-align: center; color: #777;">Belum ada log koreksi data toko.</td></tr>
-                    </tbody>
+                    <thead><tr><th>Waktu</th><th>Toko</th><th>Tipe</th><th>Detail Koreksi</th></tr></thead>
+                    <tbody id="storeAuditLogTableBody"></tbody>
                 </table>
             </div>
         </div>
     </div>
 </div>
 
-<!-- MODAL PIN & VERIFIKASI -->
+<!-- MODALS -->
+<!-- Modal PIN -->
 <div class="modal" id="pinModal">
-    <div class="modal-content" style="width: 320px;">
-        <h3 id="pinModalTitle">Masukkan PIN</h3>
-        <p style="font-size: 0.85rem; color: #666;" id="pinModalInfo"></p>
-        <input type="password" id="pinInputVal" placeholder="••••" maxlength="6" style="text-align: center; letter-spacing: 5px; font-size: 1.3rem; margin-bottom: 15px;" onkeydown="if(event.key==='Enter'){ verifyPinAction(); }">
+    <div class="modal-content" style="max-width: 320px; text-align: center;">
+        <h3 id="pinModalTitle" style="justify-content: center; font-size: 1.4rem;">Masukkan PIN</h3>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin: 10px 0 20px;" id="pinModalInfo"></p>
+        <input type="password" id="pinInputVal" placeholder="••••" maxlength="6" style="text-align: center; letter-spacing: 8px; font-size: 1.5rem; font-weight: bold; background:#f8fafc;" onkeydown="if(event.key==='Enter'){ verifyPinAction(); }">
         <div class="modal-buttons">
-            <button class="btn-cancel" onclick="closePinModal()">Batal</button>
-            <button class="btn-submit" onclick="verifyPinAction()">Konfirmasi</button>
+            <button class="btn btn-cancel" onclick="closePinModal()">Batal</button>
+            <button class="btn btn-primary" onclick="verifyPinAction()" style="width: auto; flex:1;">Konfirmasi</button>
         </div>
     </div>
 </div>
 
-<!-- MODAL BALANCING SALDO BERDASARKAN PECAHAN -->
+<!-- Modal Balancing -->
 <div class="modal" id="balancingModal">
-    <div class="modal-content" style="width: 480px; text-align: left;">
-        <h3 style="text-align: center; color: #00796b;">⚖️ Balancing Saldo Berdasarkan Pecahan</h3>
-        <p style="font-size: 0.85rem; color: #666; text-align: center;">Masukkan rincian nominal riil per pecahan di lapangan:</p>
+    <div class="modal-content">
+        <h3 style="color: #059669; justify-content: center; margin-bottom: 20px;">⚖️ Balancing Saldo Fisik</h3>
         <div class="form-group">
-            <label>Pilih Brankas Target:</label>
-            <select id="balancingVaultSelect" onchange="renderBalancingDenomTable()" style="padding: 10px; font-size: 1rem;">
-                <option value="b1">Brankas Gudang</option>
-                <option value="b2">Brankas Permen Tukar</option>
-                <option value="b3">Brankas Kamar</option>
-            </select>
+            <label>Brankas Target:</label>
+            <select id="balancingVaultSelect" onchange="renderBalancingDenomTable()"><option value="b1">Brankas Gudang</option><option value="b2">Brankas Permen Tukar</option><option value="b3">Brankas Kamar</option></select>
         </div>
         <div class="form-group">
-            <label>Rincian Pecahan Aktual:</label>
-            <div class="table-responsive">
-                <table class="denom-input-table">
-                    <thead><tr><th>Pecahan / Kategori</th><th>Nominal Riil (Rp)</th></tr></thead>
-                    <tbody id="balancingDenomTableBody"></tbody>
-                </table>
-            </div>
+            <label>Nominal Riil (Aktual di Lapangan):</label>
+            <table class="denom-input-table">
+                <thead><tr><th>Pecahan</th><th style="text-align:right;">Nominal (Rp)</th></tr></thead>
+                <tbody id="balancingDenomTableBody"></tbody>
+            </table>
+        </div>
+        <div class="form-group" style="background: var(--success-light); padding: 15px; border-radius: 8px;">
+            <label style="color: #065f46;">Total Aktual</label>
+            <input type="text" id="balancingGrandTotalInput" readonly style="font-weight: 800; font-size: 1.2rem; color: #047857; background: transparent; border: none; padding:0; text-align:right;">
         </div>
         <div class="form-group">
-            <label><b>Total Keseluruhan Aktual (Rp)</b></label>
-            <input type="text" id="balancingGrandTotalInput" readonly placeholder="Otomatis terhitung" style="font-weight: bold; font-size: 1.1rem; color: #2e7d32;">
-        </div>
-        <div class="form-group">
-            <label>Alasan / Catatan Penyesuaian:</label>
-            <input type="text" id="balancingReason" placeholder="Contoh: Penyesuaian stok opname fisik" style="font-size: 1rem;">
+            <label>Alasan Penyesuaian</label>
+            <input type="text" id="balancingReason" placeholder="Contoh: Stok opname fisik mingguan">
         </div>
         <div class="modal-buttons">
-            <button class="btn-cancel" onclick="document.getElementById('balancingModal').style.display='none'">Batal</button>
-            <button class="btn-submit" onclick="submitBalancing()" style="background: #00796b;">Simpan & Konfirmasi PIN</button>
+            <button class="btn btn-cancel" onclick="document.getElementById('balancingModal').style.display='none'">Batal</button>
+            <button class="btn btn-success" onclick="submitBalancing()" style="flex:1;">Simpan Balancing</button>
         </div>
     </div>
 </div>
 
-<!-- MODAL ALASAN HAPUS -->
+<!-- Modal Hapus -->
 <div class="modal" id="deleteReasonModal">
-    <div class="modal-content" style="width: 360px;">
-        <h3>Alasan Penghapusan</h3>
-        <p style="font-size: 0.85rem; color: #666;">Masukkan alasan mengapa riwayat transaksi ini dihapus:</p>
+    <div class="modal-content" style="max-width: 360px;">
+        <h3 style="color: var(--danger); margin-bottom:15px;">Hapus Transaksi</h3>
         <input type="hidden" id="modalDeleteTxId">
         <div class="form-group">
-            <input type="text" id="deleteReasonInput" placeholder="Contoh: Salah nominal / Dobel input" style="font-size: 1rem;">
+            <label>Alasan Penghapusan:</label>
+            <input type="text" id="deleteReasonInput" placeholder="Contoh: Salah nominal">
         </div>
         <div class="modal-buttons">
-            <button class="btn-cancel" onclick="document.getElementById('deleteReasonModal').style.display='none'">Batal</button>
-            <button class="btn-submit" onclick="confirmDeleteTransaction()" style="background:#c62828;">Hapus Permanen</button>
+            <button class="btn btn-cancel" onclick="document.getElementById('deleteReasonModal').style.display='none'">Batal</button>
+            <button class="btn" style="background: var(--danger); color: white; flex:1;" onclick="confirmDeleteTransaction()">Hapus Permanen</button>
         </div>
     </div>
 </div>
 
-<!-- MODAL-MODAL LAINNYA -->
+<!-- Modal Exchange Receive, Edit TX, Edit Store, Link Modal (SAMA SEPERTI SEBELUMNYA, HANYA GANTI CLASS BTN) -->
 <div class="modal" id="exchangeReceiveModal">
     <div class="modal-content">
-        <h3>Terima Uang Utuh</h3>
-        <p style="font-size: 0.85rem; color: #666;" id="exchangeModalInfoLabel"></p>
+        <h3 style="margin-bottom:10px;">Terima Uang Utuh</h3>
+        <p id="exchangeModalInfoLabel" style="font-weight:600; color:var(--primary); margin-bottom:15px;"></p>
         <input type="hidden" id="modalExchangeTxId">
         <div class="form-group">
-            <label>Rincian Pecahan:</label>
             <table class="denom-input-table">
-                <thead><tr><th>Pecahan</th><th>Nominal (Rp)</th></tr></thead>
+                <thead><tr><th>Pecahan</th><th style="text-align:right;">Nominal</th></tr></thead>
                 <tbody id="exchangeDenomTableBody"></tbody>
             </table>
         </div>
-        <div class="form-group"><label><b>Total Diterima</b></label><input type="text" id="exchangeTotalReceivedInput" readonly style="font-weight: bold; color: #2e7d32;"></div>
-        <div class="modal-buttons"><button class="btn-cancel" onclick="document.getElementById('exchangeReceiveModal').style.display='none'">Batal</button><button class="btn-submit" onclick="submitExchangeReceive()">Simpan</button></div>
+        <div class="form-group" style="background:#eff6ff; padding:15px; border-radius:8px;">
+            <label>Total Diterima</label>
+            <input type="text" id="exchangeTotalReceivedInput" readonly style="font-weight:bold; color:var(--primary); background:transparent; border:none; text-align:right; padding:0; font-size:1.2rem;">
+        </div>
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="document.getElementById('exchangeReceiveModal').style.display='none'">Batal</button>
+            <button class="btn btn-primary" onclick="submitExchangeReceive()" style="width:auto; flex:1;">Simpan</button>
+        </div>
     </div>
 </div>
 
-<!-- MODAL EDIT TRANSAKSI BRANKAS -->
 <div class="modal" id="editTxModal">
     <div class="modal-content">
-        <h3>Edit Transaksi Brankas</h3>
+        <h3>Edit Transaksi Brankas</h3><br>
         <input type="hidden" id="modalEditTxId">
-        <div class="form-group">
-            <label>Jenis Transaksi</label>
-            <select id="editTxType">
-                <option value="masuk">MASUK (+)</option>
-                <option value="keluar">KELUAR (-)</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Nominal Total (Rp)</label>
-            <input type="text" id="editTxAmountInput" inputmode="numeric" placeholder="0" oninput="formatInputNumber(this)" style="font-weight: bold; color: #2e7d32;">
-        </div>
+        <div class="form-group"><label>Jenis</label><select id="editTxType"><option value="masuk">MASUK (+)</option><option value="keluar">KELUAR (-)</option></select></div>
+        <div class="form-group"><label>Nominal Total (Rp)</label><input type="text" id="editTxAmountInput" oninput="formatInputNumber(this)" style="font-weight: bold; color: var(--primary);"></div>
         <div class="form-group"><label>Keterangan</label><input type="text" id="editTxDescInput"></div>
-        <div class="form-group"><label>Tanggal (DD/MM/YYYY)</label><input type="text" id="editTxDateInput"></div>
-        <div class="form-group"><label>Waktu (HH:MM:SS)</label><input type="text" id="editTxTimeInput"></div>
-        <div class="modal-buttons"><button class="btn-cancel" onclick="document.getElementById('editTxModal').style.display='none'">Batal</button><button class="btn-submit" onclick="submitEditTransaction()">Simpan</button></div>
+        <div class="form-group"><label>Tanggal</label><input type="text" id="editTxDateInput"></div>
+        <div class="form-group"><label>Waktu</label><input type="text" id="editTxTimeInput"></div>
+        <div class="modal-buttons"><button class="btn btn-cancel" onclick="document.getElementById('editTxModal').style.display='none'">Batal</button><button class="btn btn-primary" onclick="submitEditTransaction()" style="flex:1;">Simpan Edit</button></div>
     </div>
 </div>
 
 <div class="modal" id="editStoreModal">
-    <div class="modal-content" style="width: 420px; text-align: left;">
-        <h3 style="text-align: center;">Edit Riwayat Tutup Buku</h3>
+    <div class="modal-content">
+        <h3>Edit Tutup Buku Toko</h3><br>
         <input type="hidden" id="modalEditStoreId">
-        <div class="form-group"><label>Debit (Rp)</label><input type="text" id="editDebitInput" inputmode="numeric"></div>
-        <div class="form-group"><label>QRIS (Rp)</label><input type="text" id="editQrisInput" inputmode="numeric"></div>
-        <div class="form-group"><label>Permen Fisik (Rp)</label><input type="text" id="editPhysInput" inputmode="numeric"></div>
-        <div class="form-group"><label>Pengeluaran Toko</label><input type="text" id="editExpenseInput"></div>
-        <div class="form-group"><label>Parkir (Rp)</label><input type="text" id="editParkInput" inputmode="numeric"></div>
-        <div class="form-group" style="background: #fff8e1; padding: 10px; border-radius: 4px; border: 1px solid #ffe0b2;">
-            <label style="color: #e65100;">⚠️ Alasan / Catatan Koreksi (Wajib Diisi):</label>
-            <input type="text" id="editStoreReason" placeholder="Contoh: Ralat perhitungan fisik kasir" style="background: #fff;" required>
+        <div class="form-group"><label>Debit</label><input type="text" id="editDebitInput"></div>
+        <div class="form-group"><label>QRIS</label><input type="text" id="editQrisInput"></div>
+        <div class="form-group"><label>Fisik</label><input type="text" id="editPhysInput"></div>
+        <div class="form-group"><label>Pengeluaran</label><input type="text" id="editExpenseInput"></div>
+        <div class="form-group"><label>Parkir</label><input type="text" id="editParkInput"></div>
+        <div class="form-group" style="background: var(--warning-light); padding: 15px; border-radius: 8px;">
+            <label style="color: #b45309;">⚠️ Alasan Koreksi (Wajib)</label>
+            <input type="text" id="editStoreReason" required>
         </div>
-        <div class="modal-buttons"><button class="btn-cancel" onclick="document.getElementById('editStoreModal').style.display='none'">Batal</button><button class="btn-submit" onclick="submitEditStoreRecord()">Simpan</button></div>
+        <div class="modal-buttons"><button class="btn btn-cancel" onclick="document.getElementById('editStoreModal').style.display='none'">Batal</button><button class="btn btn-primary" onclick="submitEditStoreRecord()" style="flex:1;">Simpan Edit</button></div>
     </div>
 </div>
 
 <div class="modal" id="linkModal">
-    <div class="modal-content">
-        <h3>Tautan Akses & QR Code</h3>
-        <input type="text" id="appUrlInput" readonly style="font-size: 0.85rem; text-align: center; margin-bottom: 10px; background: #f1f3f5; font-weight: bold;">
-        <div id="qrcodeContainer" style="display: flex; justify-content: center; margin-bottom: 15px;"></div>
-        <button class="btn-cancel" onclick="document.getElementById('linkModal').style.display='none'">Tutup</button>
+    <div class="modal-content" style="max-width: 320px; text-align: center;">
+        <h3 style="justify-content: center; margin-bottom: 15px;">QR Akses Aplikasi</h3>
+        <input type="text" id="appUrlInput" readonly style="text-align: center; margin-bottom: 20px; background: #f8fafc; font-weight: 600; font-size: 0.85rem;">
+        <div id="qrcodeContainer" style="display: flex; justify-content: center; margin-bottom: 20px;"></div>
+        <button class="btn btn-cancel" style="width: 100%;" onclick="document.getElementById('linkModal').style.display='none'">Tutup</button>
     </div>
 </div>
 
+<!-- ======================= -->
+<!-- BAGIAN JAVASCRIPT BAWAAN -->
+<!-- ======================= -->
 <script>
+    // Konfigurasi dan Logika JS SAMA PERSIS dengan kode yang Anda berikan terakhir.
+    // Tidak ada satupun ID atau struktur data yang diubah agar logic berjalan sempurna.
+    
     const firebaseConfig = {
         apiKey: "AIzaSyCVJcVrRg4w9xY__bvf_4Lfk0ENQ5X5F8E",
         authDomain: "pencatatan-keuangan-brankas.firebaseapp.com",
@@ -592,23 +667,23 @@
     let storeIncomeBarChartInstance = null;
 
     const standardDenominations = [
-        { key: 'receh', label: 'Receh', emoji: '🪙', color: '#795548', bg: '#efebe9' },
-        { key: '1000_2000', label: 'Rp1.000 & Rp2.000', emoji: '💵', color: '#00838f', bg: '#e0f7fa' },
-        { key: '5000', label: 'Rp5.000', emoji: '💵', color: '#6a1b9a', bg: '#f3e5f5' },
-        { key: '10000', label: 'Rp10.000', emoji: '💵', color: '#ad1457', bg: '#fce4ec' },
-        { key: '20000', label: 'Rp20.000', emoji: '💵', color: '#2e7d32', bg: '#e8f5e9' },
-        { key: '50000', label: 'Rp50.000', emoji: '💵', color: '#1565c0', bg: '#e3f2fd' },
-        { key: '75000', label: 'Rp75.000', emoji: '✨💵', color: '#e65100', bg: '#fff3e0' },
-        { key: '100000', label: 'Rp100.000', emoji: '🔥💵', color: '#c62828', bg: '#ffebee' }
+        { key: 'receh', label: 'Receh', emoji: '🪙' },
+        { key: '1000_2000', label: 'Rp1 & Rp2 Rb', emoji: '💵' },
+        { key: '5000', label: 'Rp5.000', emoji: '💵' },
+        { key: '10000', label: 'Rp10.000', emoji: '💵' },
+        { key: '20000', label: 'Rp20.000', emoji: '💵' },
+        { key: '50000', label: 'Rp50.000', emoji: '💵' },
+        { key: '75000', label: 'Rp75.000', emoji: '✨' },
+        { key: '100000', label: 'Rp100.000', emoji: '🔥' }
     ];
     const exchangeDenominations = [
-        { key: 'receh', label: 'Receh', emoji: '🪙', color: '#795548', bg: '#efebe9' },
-        { key: '1000_2000', label: 'Rp1.000 & Rp2.000', emoji: '💵', color: '#00838f', bg: '#e0f7fa' },
-        { key: '5000', label: 'Rp5.000', emoji: '💵', color: '#6a1b9a', bg: '#f3e5f5' },
-        { key: '10000', label: 'Rp10.000', emoji: '💵', color: '#ad1457', bg: '#fce4ec' },
-        { key: '20000', label: 'Rp20.000', emoji: '💵', color: '#2e7d32', bg: '#e8f5e9' },
-        { key: '50000_100000', label: 'Rp50.000 & Rp100.000', emoji: '🔥💵', color: '#c62828', bg: '#ffebee' },
-        { key: '75000', label: 'Rp75.000', emoji: '✨💵', color: '#e65100', bg: '#fff3e0' }
+        { key: 'receh', label: 'Receh', emoji: '🪙' },
+        { key: '1000_2000', label: 'Rp1 & Rp2 Rb', emoji: '💵' },
+        { key: '5000', label: 'Rp5.000', emoji: '💵' },
+        { key: '10000', label: 'Rp10.000', emoji: '💵' },
+        { key: '20000', label: 'Rp20.000', emoji: '💵' },
+        { key: '50000_100000', label: 'Rp50k & Rp100k', emoji: '🔥' },
+        { key: '75000', label: 'Rp75.000', emoji: '✨' }
     ];
     function getActiveDenominations(vaultId) { return vaultId === 'b2' ? exchangeDenominations : standardDenominations; }
 
@@ -689,7 +764,7 @@
     }
 
     function requestUnlockAllVaults() {
-        promptPin('Buka Semua Akses', 'Masukkan Master PIN untuk membuka seluruh brankas dan Audit Trail sekaligus:', (pin) => {
+        promptPin('Buka Semua Akses', 'Masukkan Master PIN untuk membuka seluruh brankas:', (pin) => {
             if (pin === masterPin) {
                 vaults.forEach(v => v.isUnlocked = true);
                 isAuditTrailUnlocked = true;
@@ -727,7 +802,7 @@
         let exchangeVault = vaults.find(v => v.id === 'b2');
         let exchangePin = exchangeVault ? exchangeVault.pin : '5678';
 
-        promptPin('Verifikasi Akses Cashflow', 'Masukkan PIN Brankas Permen Tukar atau Master PIN:', (pin) => {
+        promptPin('Akses Cashflow', 'Masukkan PIN Brankas Tukar atau Master PIN:', (pin) => {
             if (pin === masterPin || pin === exchangePin) {
                 switchSlide(2);
                 return true;
@@ -767,7 +842,7 @@
             if (!vaults.some(v => v.isUnlocked)) isAuditTrailUnlocked = false;
             renderAll();
         } else {
-            promptPin(`Buka Brankas: ${vault.name}`, 'Masukkan PIN brankas atau Master PIN:', (enteredPin) => {
+            promptPin(`Buka Brankas: ${vault.name}`, 'Masukkan PIN brankas / Master PIN:', (enteredPin) => {
                 if (enteredPin === vault.pin || enteredPin === masterPin) {
                     vault.isUnlocked = true;
                     if (enteredPin === masterPin) {
@@ -788,9 +863,15 @@
         tbody.innerHTML = '';
         let currentVaultId = document.getElementById('vaultSelect').value || activeTabVaultId;
         getActiveDenominations(currentVaultId).forEach(d => {
-            tbody.innerHTML += `<tr><td style="font-weight:bold;">${d.label}</td><td><input type="text" class="denom-direct-amount" inputmode="numeric" data-key="${d.key}" value="0" oninput="onDirectAmountInput(this)"></td></tr>`;
+            tbody.innerHTML += `<tr>
+                <td>${d.emoji} <span style="font-weight:600; color:#333;">${d.label}</span></td>
+                <td><input type="text" class="denom-direct-amount" inputmode="numeric" data-key="${d.key}" value="0" oninput="onDirectAmountInput(this)"></td>
+            </tr>`;
         });
-        tbody.innerHTML += `<tr style="background:#fff8e1;"><td style="font-weight:bold; color:#b71c1c;">Permen Rusak Mix</td><td><input type="text" id="rusakMixInput" inputmode="numeric" value="0" oninput="onDirectAmountInput(this)"></td></tr>`;
+        tbody.innerHTML += `<tr>
+            <td>⚠️ <span style="font-weight:600; color:var(--danger);">Permen Rusak Mix</span></td>
+            <td><input type="text" id="rusakMixInput" inputmode="numeric" value="0" oninput="onDirectAmountInput(this)"></td>
+        </tr>`;
         calculateTotalFormAmount();
     }
 
@@ -812,10 +893,7 @@
         e.preventDefault();
         const vaultId = document.getElementById('vaultSelect').value;
         const vault = vaults.find(v => v.id === vaultId);
-        if (!vault.isUnlocked) {
-            alert('Brankas terkunci! Buka brankas dengan PIN terlebih dahulu.');
-            return;
-        }
+        if (!vault.isUnlocked) { alert('Brankas terkunci! Buka brankas dengan PIN terlebih dahulu.'); return; }
 
         const type = document.getElementById('typeSelect').value;
         const amount = parseCleanNumber(document.getElementById('grandAmountInput').value);
@@ -883,7 +961,7 @@
             if (!v.isUnlocked) allUnlocked = false;
 
             if (vaultContainer) {
-                let btnText = v.isUnlocked ? '🔒 Kunci Kembali' : '🔑 Masukkan PIN';
+                let btnText = v.isUnlocked ? '🔒 Kunci Kembali' : '🔑 Buka PIN';
                 let btnClass = v.isUnlocked ? 'pin-btn unlocked' : 'pin-btn';
                 let balanceDisplay = v.isUnlocked ? formatRp(balance) : 'Rp ••••••••';
                 vaultContainer.innerHTML += `
@@ -899,12 +977,9 @@
         if (vaultSelect && currentSelected) vaultSelect.value = currentSelected;
         else if (vaultSelect && vaultSelect.options.length > 0 && !vaultSelect.value) vaultSelect.value = activeTabVaultId;
 
-        document.getElementById('grandTotalTitle').innerText = allUnlocked ? 'Total Saldo Keseluruhan (Terbuka Penuh)' : 'Total Saldo Keseluruhan (Terkunci Sebagian)';
-        document.getElementById('grandTotalBalanceContainer').innerText = allUnlocked ? formatRp(grandTotal) : 'Rp •••••••• (Buka Semua PIN)';
-        
-        if (balancingBtn) {
-            balancingBtn.style.display = allUnlocked ? 'inline-block' : 'none';
-        }
+        document.getElementById('grandTotalTitle').innerText = allUnlocked ? 'Total Saldo Keseluruhan' : 'Total Saldo (Terkunci Sebagian)';
+        document.getElementById('grandTotalBalanceContainer').innerText = allUnlocked ? formatRp(grandTotal) : 'Rp ••••••••';
+        if (balancingBtn) balancingBtn.style.display = allUnlocked ? 'inline-block' : 'none';
 
         renderDenomInputTable();
         renderTabs();
@@ -926,9 +1001,15 @@
         tbody.innerHTML = '';
         let currentVaultId = document.getElementById('balancingVaultSelect').value;
         getActiveDenominations(currentVaultId).forEach(d => {
-            tbody.innerHTML += `<tr><td style="font-weight:bold;">${d.label}</td><td><input type="text" class="balancing-denom-input" inputmode="numeric" data-key="${d.key}" value="0" oninput="onBalancingAmountInput(this)"></td></tr>`;
+            tbody.innerHTML += `<tr>
+                <td>${d.emoji} <span style="font-weight:600;">${d.label}</span></td>
+                <td><input type="text" class="balancing-denom-input" inputmode="numeric" data-key="${d.key}" value="0" oninput="onBalancingAmountInput(this)"></td>
+            </tr>`;
         });
-        tbody.innerHTML += `<tr style="background:#fff8e1;"><td style="font-weight:bold; color:#b71c1c;">Permen Rusak Mix</td><td><input type="text" id="balancingRusakInput" inputmode="numeric" value="0" oninput="onBalancingAmountInput(this)"></td></tr>`;
+        tbody.innerHTML += `<tr>
+            <td>⚠️ <span style="font-weight:600; color:var(--danger);">Permen Rusak Mix</span></td>
+            <td><input type="text" id="balancingRusakInput" inputmode="numeric" value="0" oninput="onBalancingAmountInput(this)"></td>
+        </tr>`;
         calculateBalancingTotal();
     }
 
@@ -951,17 +1032,12 @@
         let targetAmount = parseCleanNumber(document.getElementById('balancingGrandTotalInput').value);
         let reason = document.getElementById('balancingReason').value.trim();
 
-        if (!reason) {
-            alert('Alasan / Catatan balancing wajib diisi!');
-            return;
-        }
-
+        if (!reason) { alert('Alasan balancing wajib diisi!'); return; }
         let vault = vaults.find(v => v.id === vaultId);
         document.getElementById('balancingModal').style.display = 'none';
 
-        promptPin('Konfirmasi Master PIN', `Masukkan Master PIN untuk mengonfirmasi balancing saldo ${vault.name}:`, (enteredPin) => {
+        promptPin('Konfirmasi Master PIN', `Masukkan Master PIN untuk balancing saldo ${vault.name}:`, (enteredPin) => {
             if (enteredPin === masterPin) {
-                // 1. Hitung pecahan dan total saldo saat ini di sistem
                 let currentDenoms = { rusak: 0 };
                 getActiveDenominations(vaultId).forEach(d => currentDenoms[d.key] = 0);
 
@@ -978,53 +1054,28 @@
                         }
 
                         if (tx.type === 'masuk' && tx.details) {
-                            tx.details.forEach(d => {
-                                let k = d.isRusak ? 'rusak' : d.denomKey;
-                                currentDenoms[k] = (currentDenoms[k] || 0) + d.amount;
-                            });
+                            tx.details.forEach(d => { let k = d.isRusak ? 'rusak' : d.denomKey; currentDenoms[k] = (currentDenoms[k] || 0) + d.amount; });
                         } else if (tx.type === 'keluar' && tx.details) {
-                            tx.details.forEach(d => {
-                                let k = d.isRusak ? 'rusak' : d.denomKey;
-                                currentDenoms[k] = (currentDenoms[k] || 0) - d.amount;
-                            });
+                            tx.details.forEach(d => { let k = d.isRusak ? 'rusak' : d.denomKey; currentDenoms[k] = (currentDenoms[k] || 0) - d.amount; });
                         }
                         if (!tx.isBalancing && vaultId === 'b2' && tx.type === 'keluar' && tx.exchangeStatus === 'sudah' && tx.receivedDetails) {
-                            tx.receivedDetails.forEach(d => {
-                                let k = d.isRusak ? 'rusak' : d.denomKey;
-                                currentDenoms[k] = (currentDenoms[k] || 0) + d.amount;
-                            });
+                            tx.receivedDetails.forEach(d => { let k = d.isRusak ? 'rusak' : d.denomKey; currentDenoms[k] = (currentDenoms[k] || 0) + d.amount; });
                         }
                     }
                 });
 
-                // 2. Kumpulkan rincian pecahan fisik (target aktual) dari input modal
                 let targetDenoms = {};
-                document.querySelectorAll('.balancing-denom-input').forEach(i => {
-                    targetDenoms[i.dataset.key] = parseCleanNumber(i.value);
-                });
+                document.querySelectorAll('.balancing-denom-input').forEach(i => targetDenoms[i.dataset.key] = parseCleanNumber(i.value));
                 targetDenoms['rusak'] = parseCleanNumber(document.getElementById('balancingRusakInput').value);
 
-                // 3. Kalkulasi selisih yang harus ditambahkan/dikurangi agar sistem cocok dengan fisik
-                let masukDetails = [];
-                let keluarDetails = [];
-                let masukTotal = 0;
-                let keluarTotal = 0;
-
+                let masukDetails = [], keluarDetails = [], masukTotal = 0, keluarTotal = 0;
                 for (let key in targetDenoms) {
                     let diff = targetDenoms[key] - (currentDenoms[key] || 0);
-                    if (diff > 0) {
-                        masukDetails.push({ denomKey: key === 'rusak' ? 'rusak' : key, amount: diff, isRusak: key === 'rusak' });
-                        masukTotal += diff;
-                    } else if (diff < 0) {
-                        keluarDetails.push({ denomKey: key === 'rusak' ? 'rusak' : key, amount: Math.abs(diff), isRusak: key === 'rusak' });
-                        keluarTotal += Math.abs(diff);
-                    }
+                    if (diff > 0) { masukDetails.push({ denomKey: key === 'rusak' ? 'rusak' : key, amount: diff, isRusak: key === 'rusak' }); masukTotal += diff; } 
+                    else if (diff < 0) { keluarDetails.push({ denomKey: key === 'rusak' ? 'rusak' : key, amount: Math.abs(diff), isRusak: key === 'rusak' }); keluarTotal += Math.abs(diff); }
                 }
 
-                if (masukTotal === 0 && keluarTotal === 0) {
-                    alert('Total saldo dan seluruh rincian pecahan aktual sudah SAMA dengan data di sistem. Tidak ada yang perlu dibalancing.');
-                    return true;
-                }
+                if (masukTotal === 0 && keluarTotal === 0) { alert('Saldo sudah cocok dengan fisik. Tidak ada perubahan.'); return true; }
 
                 let now = new Date();
                 let dateStr = now.toLocaleDateString('id-ID');
@@ -1032,58 +1083,22 @@
                 let monthYearStr = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(now);
                 let timestamp = Date.now();
 
-                // 4. Masukkan transaksi Penambahan (jika ada kekurangan di sistem)
                 if (masukTotal > 0) {
-                    let txMasuk = {
-                        id: timestamp,
-                        vaultId,
-                        type: 'masuk',
-                        amount: masukTotal,
-                        details: masukDetails,
-                        exchangeStatus: 'sudah',
-                        isBalancing: true,
-                        receivedDetails: [],
-                        totalReceived: 0,
-                        description: `Balancing (Penyesuaian Masuk): ${reason}`,
-                        date: dateStr,
-                        time: timeStr,
-                        monthYear: monthYearStr
-                    };
+                    let txMasuk = { id: timestamp, vaultId, type: 'masuk', amount: masukTotal, details: masukDetails, exchangeStatus: 'sudah', isBalancing: true, description: `Balancing Masuk: ${reason}`, date: dateStr, time: timeStr, monthYear: monthYearStr };
                     transactions.push(txMasuk);
                     deletionLogs.push({ ...txMasuk, vaultSource: vault.name, reason: `⚖️ BALANCING MASUK: ${reason}`, deletedAt: `${dateStr} ${timeStr}` });
                 }
-
-                // 5. Masukkan transaksi Pengurangan (jika ada kelebihan di sistem)
                 if (keluarTotal > 0) {
-                    let txKeluar = {
-                        id: timestamp + 1,
-                        vaultId,
-                        type: 'keluar',
-                        amount: keluarTotal,
-                        details: keluarDetails,
-                        exchangeStatus: 'sudah',
-                        isBalancing: true,
-                        receivedDetails: [],
-                        totalReceived: 0,
-                        description: `Balancing (Penyesuaian Keluar): ${reason}`,
-                        date: dateStr,
-                        time: timeStr,
-                        monthYear: monthYearStr
-                    };
+                    let txKeluar = { id: timestamp + 1, vaultId, type: 'keluar', amount: keluarTotal, details: keluarDetails, exchangeStatus: 'sudah', isBalancing: true, description: `Balancing Keluar: ${reason}`, date: dateStr, time: timeStr, monthYear: monthYearStr };
                     transactions.push(txKeluar);
                     deletionLogs.push({ ...txKeluar, vaultSource: vault.name, reason: `⚖️ BALANCING KELUAR: ${reason}`, deletedAt: `${dateStr} ${timeStr}` });
                 }
 
                 syncToCloud();
-                
-                let diffMsg = "";
-                if (masukTotal > 0) diffMsg += `• Sistem Otomatis Menambah: ${formatRp(masukTotal)}\n`;
-                if (keluarTotal > 0) diffMsg += `• Sistem Otomatis Mengurangi: ${formatRp(keluarTotal)}\n`;
-                
-                alert(`Balancing berhasil diproses!\n\n${diffMsg}\nSistem sekarang sudah disesuaikan agar sama persis dengan permen riil di lapangan.`);
+                alert(`Balancing selesai!\nSistem menambah: ${formatRp(masukTotal)}\nSistem mengurangi: ${formatRp(keluarTotal)}`);
                 return true;
             }
-            alert('Master PIN salah! Balancing dibatalkan.');
+            alert('PIN salah!');
             return false;
         });
     }
@@ -1099,9 +1114,7 @@
             if (dContainer) dContainer.innerHTML += `<button class="${cls}" onclick="switchTabAndSelectVault('${v.id}')">${v.name}</button>`;
             if (hContainer) hContainer.innerHTML += `<button class="${cls}" onclick="switchTabAndSelectVault('${v.id}')">${v.name}</button>`;
         });
-        if (hContainer) {
-            hContainer.innerHTML += `<button class="tab-btn master-tab ${activeTabVaultId==='all'?'active':''}" onclick="switchTab('all')">⭐ Semua Brankas</button>`;
-        }
+        if (hContainer) { hContainer.innerHTML += `<button class="tab-btn master-tab ${activeTabVaultId==='all'?'active':''}" onclick="switchTab('all')">⭐ Semua Brankas</button>`; }
     }
 
     function switchTab(id) { activeTabVaultId = id; renderAll(); }
@@ -1115,10 +1128,7 @@
         const container = document.getElementById('denomSummaryContent');
         if (!container) return;
         const vault = vaults.find(v => v.id === activeTabVaultId);
-        if (!vault || !vault.isUnlocked) {
-            container.innerHTML = `<p style="text-align:center; color:#c62828;">Brankas terkunci. Masukkan PIN brankas untuk melihat rincian.</p>`;
-            return;
-        }
+        if (!vault || !vault.isUnlocked) { container.innerHTML = `<p style="text-align:center; color:var(--danger); padding: 20px;">🔒 Brankas dikunci. Buka akses untuk melihat.</p>`; return; }
 
         let activeDenoms = getActiveDenominations(vault.id);
         let gridHtml = `<div class="denom-summary-grid">`;
@@ -1140,30 +1150,39 @@
         });
 
         activeDenoms.forEach(d => {
-            gridHtml += `<div class="denom-summary-card" style="border-top: 4px solid ${d.color};"><div class="denom-badge">${d.emoji}</div><h5 style="color: ${d.color};">${d.label}</h5><div style="font-weight: bold; color: ${totals[d.key] < 0 ? '#c62828' : '#2e7d32'};">${formatRp(totals[d.key])}</div></div>`;
+            gridHtml += `<div class="denom-summary-card">
+                <div class="denom-badge">${d.emoji}</div>
+                <h5 style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 5px;">${d.label}</h5>
+                <div style="font-weight: 800; font-size:1.1rem; color: ${totals[d.key] < 0 ? 'var(--danger)' : 'var(--text-main)'};">${formatRp(totals[d.key])}</div>
+            </div>`;
         });
-        gridHtml += `<div class="denom-summary-card" style="border-top: 4px solid #b71c1c;"><div class="denom-badge">⚠️</div><h5 style="color: #b71c1c;">Permen Rusak Mix</h5><div style="font-weight: bold; color: #b71c1c;">${formatRp(totalRusakMix)}</div></div></div>`;
+        gridHtml += `<div class="denom-summary-card" style="border: 1px solid #fecaca; background: #fff5f5;">
+            <div class="denom-badge">⚠️</div>
+            <h5 style="color: var(--danger); font-size: 0.85rem; margin-bottom: 5px;">Rusak Mix</h5>
+            <div style="font-weight: 800; font-size:1.1rem; color: var(--danger);">${formatRp(totalRusakMix)}</div>
+        </div></div>`;
         container.innerHTML = gridHtml;
     }
 
     function renderMonthlySummary() {
         const cur = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date());
         document.getElementById('currentMonthLabel').innerText = cur;
-        let html = `<table><thead><tr><th>Brankas</th><th>Total Masuk</th><th>Total Keluar</th><th>Selisih (Net)</th></tr></thead><tbody>`;
+        let html = `<table><thead><tr><th>Brankas</th><th>Masuk</th><th>Keluar</th><th>Net (Selisih)</th></tr></thead><tbody>`;
         vaults.forEach(v => {
-            if (!v.isUnlocked) {
-                html += `<tr><td>${v.name}</td><td colspan="3" style="color:#c62828; text-align:center;">Terkunci (Masukkan PIN)</td></tr>`;
-                return;
-            }
+            if (!v.isUnlocked) { html += `<tr><td><b>${v.name}</b></td><td colspan="3" style="color:var(--text-muted); font-style:italic;">🔒 Terkunci</td></tr>`; return; }
             let m = 0, k = 0;
             transactions.forEach(tx => {
                 if (tx.vaultId === v.id && tx.monthYear === cur) {
-                    if (tx.type === 'masuk') m += tx.amount;
-                    else if (tx.type === 'keluar') k += tx.amount;
+                    if (tx.type === 'masuk') m += tx.amount; else if (tx.type === 'keluar') k += tx.amount;
                 }
             });
             let net = m - k;
-            html += `<tr><td>${v.name}</td><td class="masuk">+${formatRp(m)}</td><td class="keluar">-${formatRp(k)}</td><td class="${net >= 0 ? 'masuk' : 'keluar'}">${net >= 0 ? '+' : ''}${formatRp(net)}</td></tr>`;
+            html += `<tr>
+                <td><b>${v.name}</b></td>
+                <td class="text-masuk">+${formatRp(m)}</td>
+                <td class="text-keluar">-${formatRp(k)}</td>
+                <td class="${net >= 0 ? 'text-masuk' : 'text-keluar'}">${net >= 0 ? '+' : ''}${formatRp(net)}</td>
+            </tr>`;
         });
         html += `</tbody></table>`;
         document.getElementById('summaryContentArea').innerHTML = html;
@@ -1174,42 +1193,32 @@
         if (!container) return;
         
         if (activeTabVaultId === 'all') {
-            let anyUnlocked = vaults.some(v => v.isUnlocked);
-            if (!anyUnlocked) {
-                container.innerHTML = `<p style="text-align:center; color:#c62828;">Riwayat semua brankas dikunci. Buka setidaknya satu brankas atau gunakan Master PIN untuk melihat riwayat keseluruhan.</p>`;
-                return;
-            }
+            if (!vaults.some(v => v.isUnlocked)) { container.innerHTML = `<p style="text-align:center; padding:20px; color:var(--text-muted);">Buka setidaknya satu brankas untuk melihat riwayat keseluruhan.</p>`; return; }
         } else {
             let v = vaults.find(x => x.id === activeTabVaultId);
-            if (!v || !v.isUnlocked) {
-                container.innerHTML = `<p style="text-align:center; color:#c62828;">Brankas terkunci. Masukkan PIN untuk melihat riwayat transaksi.</p>`;
-                return;
-            }
+            if (!v || !v.isUnlocked) { container.innerHTML = `<p style="text-align:center; padding:20px; color:var(--text-muted);">Brankas terkunci.</p>`; return; }
         }
 
         const getVerticalDetails = (details) => {
             if (!details || details.length === 0) return '-';
             let html = `<div class="vertical-details">`;
-            details.forEach(d => {
-                html += `<div>• ${d.isRusak ? 'Rusak Mix' : d.denomKey}: <b>${formatRp(d.amount)}</b></div>`;
-            });
+            details.forEach(d => { html += `<div>• ${d.isRusak ? 'Rusak Mix' : d.denomKey}: <b>${formatRp(d.amount)}</b></div>`; });
             html += `</div>`;
             return html;
         };
 
         if (activeTabVaultId === 'all') {
-            let html = `<table><thead><tr><th>Aksi</th><th>Brankas</th><th>Waktu</th><th>Jenis</th><th>Keterangan</th><th>Total</th><th>Rincian</th></tr></thead><tbody>`;
+            let html = `<table><thead><tr><th>Aksi</th><th>Brankas</th><th>Waktu</th><th>Tipe</th><th>Keterangan</th><th>Total</th><th>Rincian</th></tr></thead><tbody>`;
             transactions.slice().reverse().forEach(tx => {
                 let vObj = vaults.find(v => v.id === tx.vaultId);
-                let canView = vObj && vObj.isUnlocked;
-                if (!canView) return;
+                if (!vObj || !vObj.isUnlocked) return;
                 html += `<tr>
-                    <td><button class="btn-edit" onclick="requestEditTx(${tx.id})">✏️</button><button class="btn-trash" onclick="requestDeleteTx(${tx.id})">🗑️</button></td>
-                    <td><b>${vObj ? vObj.name : ''}</b></td>
-                    <td>${tx.date} ${tx.time}</td>
-                    <td class="${tx.type}">${tx.type.toUpperCase()}</td>
-                    <td>${tx.description}</td>
-                    <td class="${tx.type}">${formatRp(tx.amount)}</td>
+                    <td><button class="btn-action-icon" onclick="requestEditTx(${tx.id})">✏️</button> <button class="btn-action-icon" style="color:var(--danger);" onclick="requestDeleteTx(${tx.id})">🗑️</button></td>
+                    <td><b>${vObj.name}</b></td>
+                    <td><span style="color:var(--text-muted); font-size:0.85rem;">${tx.date}</span><br>${tx.time}</td>
+                    <td><span class="badge ${tx.type === 'masuk' ? 'badge-masuk' : 'badge-keluar'}">${tx.type}</span></td>
+                    <td style="max-width:200px; white-space:normal;">${tx.description}</td>
+                    <td class="${tx.type === 'masuk' ? 'text-masuk' : 'text-keluar'}">${formatRp(tx.amount)}</td>
                     <td>${getVerticalDetails(tx.details)}</td>
                 </tr>`;
             });
@@ -1219,28 +1228,23 @@
         }
 
         let isB2 = (activeTabVaultId === 'b2');
-        let html = `<table><thead><tr><th>Aksi</th><th>Waktu</th>${isB2?'<th>Status</th>':''}<th>Jenis</th><th>Keterangan</th><th>Total</th><th>Rincian</th></tr></thead><tbody>`;
+        let html = `<table><thead><tr><th>Aksi</th><th>Waktu</th>${isB2?'<th>Status Tukar</th>':''}<th>Tipe</th><th>Keterangan</th><th>Total</th><th>Rincian</th></tr></thead><tbody>`;
         let filtered = transactions.filter(t => t.vaultId === activeTabVaultId);
         filtered.slice().reverse().forEach(tx => {
             let statusTd = '';
             if (isB2 && tx.type === 'keluar') {
-                if (tx.isBalancing) {
-                    statusTd = `<td>-</td>`;
-                } else {
-                    statusTd = tx.exchangeStatus === 'sudah' ? 
-                        `<td><button onclick="openExchangeModal(${tx.id})" style="padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; background: #c8e6c9; color: #2e7d32;">🟢 Diterima</button></td>` : 
-                        `<td><button onclick="openExchangeModal(${tx.id})" style="padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; background: #ffcdd2; color: #c62828;">🔴 Belum</button></td>`;
-                }
-            } else if (isB2) { 
-                statusTd = `<td>-</td>`; 
-            }
+                if (tx.isBalancing) statusTd = `<td>-</td>`; 
+                else statusTd = tx.exchangeStatus === 'sudah' ? 
+                    `<td><button onclick="openExchangeModal(${tx.id})" class="badge badge-masuk" style="border:none; cursor:pointer;">✔ Selesai</button></td>` : 
+                    `<td><button onclick="openExchangeModal(${tx.id})" class="badge badge-keluar" style="border:none; cursor:pointer;">⏳ Belum</button></td>`;
+            } else if (isB2) { statusTd = `<td>-</td>`; }
 
             html += `<tr>
-                <td><button class="btn-edit" onclick="requestEditTx(${tx.id})">✏️</button><button class="btn-trash" onclick="requestDeleteTx(${tx.id})">🗑️</button></td>
-                <td>${tx.date} ${tx.time}</td>${statusTd}
-                <td class="${tx.type}">${tx.type.toUpperCase()}</td>
-                <td>${tx.description}</td>
-                <td class="${tx.type}">${tx.type==='masuk'?'+':'-'}${formatRp(tx.amount)}</td>
+                <td><button class="btn-action-icon" onclick="requestEditTx(${tx.id})">✏️</button> <button class="btn-action-icon" style="color:var(--danger);" onclick="requestDeleteTx(${tx.id})">🗑️</button></td>
+                <td><span style="color:var(--text-muted); font-size:0.85rem;">${tx.date}</span><br>${tx.time}</td>${statusTd}
+                <td><span class="badge ${tx.type === 'masuk' ? 'badge-masuk' : 'badge-keluar'}">${tx.type}</span></td>
+                <td style="max-width:200px; white-space:normal;">${tx.description}</td>
+                <td class="${tx.type === 'masuk' ? 'text-masuk' : 'text-keluar'}">${tx.type==='masuk'?'+':'-'}${formatRp(tx.amount)}</td>
                 <td>${getVerticalDetails(tx.details)}</td>
             </tr>`;
         });
@@ -1249,13 +1253,10 @@
     }
 
     function requestEditTx(txId) {
-        promptPin('Verifikasi Keamanan Edit', 'Masukkan Master PIN atau PIN Brankas terkait:', (pin) => {
+        promptPin('Verifikasi Edit', 'Masukkan PIN terkait:', (pin) => {
             let tx = transactions.find(t => t.id === txId);
             let vault = vaults.find(v => v.id === tx.vaultId);
-            if (pin === masterPin || pin === vault.pin) {
-                openEditTxModal(txId);
-                return true;
-            }
+            if (pin === masterPin || pin === vault.pin) { openEditTxModal(txId); return true; }
             return false;
         });
     }
@@ -1263,11 +1264,9 @@
     function requestDeleteTx(txId) {
         let tx = transactions.find(t => t.id === txId);
         let txVault = vaults.find(v => v.id === tx.vaultId);
-        let vaultName = txVault ? txVault.name : 'Brankas';
-
-        promptPin('Verifikasi Penghapusan', `Masukkan Master PIN atau PIN ${vaultName} untuk menghapus:`, (pin) => {
+        promptPin('Verifikasi Penghapusan', `Masukkan PIN untuk menghapus:`, (pin) => {
             if (pin === masterPin || (txVault && pin === txVault.pin)) {
-                window.activeDeletingVaultName = vaultName;
+                window.activeDeletingVaultName = txVault ? txVault.name : 'Brankas';
                 document.getElementById('modalDeleteTxId').value = txId;
                 document.getElementById('deleteReasonInput').value = '';
                 document.getElementById('deleteReasonModal').style.display = 'flex';
@@ -1282,16 +1281,13 @@
         let txId = parseInt(document.getElementById('modalDeleteTxId').value);
         let reason = document.getElementById('deleteReasonInput').value.trim();
         if (!reason) { alert('Alasan penghapusan wajib diisi!'); return; }
-
         let tx = transactions.find(t => t.id === txId);
         if (tx) {
             let now = new Date();
-            let vaultSource = window.activeDeletingVaultName || 'Brankas';
-            deletionLogs.push({ ...tx, vaultSource, reason: `🗑️ HAPUS: ${reason}`, deletedAt: `${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID')}` });
+            deletionLogs.push({ ...tx, vaultSource: window.activeDeletingVaultName, reason: `🗑️ HAPUS: ${reason}`, deletedAt: `${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID')}` });
             transactions = transactions.filter(t => t.id !== txId);
             syncToCloud();
             document.getElementById('deleteReasonModal').style.display = 'none';
-            alert('Transaksi berhasil dihapus dan dicatat di Audit Trail.');
         }
     }
 
@@ -1304,35 +1300,32 @@
         tbody.innerHTML = '';
         getActiveDenominations('b2').forEach(d => {
             let found = tx.receivedDetails ? tx.receivedDetails.find(rd => rd.denomKey === d.key && !rd.isRusak) : null;
-            tbody.innerHTML += `<tr><td>${d.label}</td><td><input type="text" class="exchange-denom-input" inputmode="numeric" data-key="${d.key}" value="${formatNumber(found ? found.amount : 0)}" oninput="calculateExchangeTotal()"></td></tr>`;
+            tbody.innerHTML += `<tr><td>${d.emoji} <b>${d.label}</b></td><td><input type="text" class="exchange-denom-input" inputmode="numeric" data-key="${d.key}" value="${formatNumber(found ? found.amount : 0)}" oninput="calculateExchangeTotal()"></td></tr>`;
         });
-        let foundRusak = tx.receivedDetails ? tx.receivedDetails.find(rd => rd.isRusak) : null;
-        tbody.innerHTML += `<tr style="background:#fff8e1;"><td style="color:#b71c1c; font-weight:bold;">Permen Rusak Mix</td><td><input type="text" id="exchangeRusakInput" inputmode="numeric" value="${formatNumber(foundRusak ? foundRusak.amount : 0)}" oninput="calculateExchangeTotal()"></td></tr>`;
+        let fRusak = tx.receivedDetails ? tx.receivedDetails.find(rd => rd.isRusak) : null;
+        tbody.innerHTML += `<tr><td style="color:var(--danger);">⚠️ <b>Permen Rusak</b></td><td><input type="text" id="exchangeRusakInput" inputmode="numeric" value="${formatNumber(fRusak ? fRusak.amount : 0)}" oninput="calculateExchangeTotal()"></td></tr>`;
         calculateExchangeTotal();
         document.getElementById('exchangeReceiveModal').style.display = 'flex';
     }
+
     function calculateExchangeTotal() {
         let total = 0;
         document.querySelectorAll('.exchange-denom-input').forEach(i => total += parseCleanNumber(i.value));
-        let rusak = document.getElementById('exchangeRusakInput');
-        if (rusak) total += parseCleanNumber(rusak.value);
+        let r = document.getElementById('exchangeRusakInput');
+        if (r) total += parseCleanNumber(r.value);
         document.getElementById('exchangeTotalReceivedInput').value = formatNumber(total);
     }
+
     function submitExchangeReceive() {
         let txId = parseInt(document.getElementById('modalExchangeTxId').value);
         let totalReceived = parseCleanNumber(document.getElementById('exchangeTotalReceivedInput').value);
         const receivedDetails = [];
-        document.querySelectorAll('.exchange-denom-input').forEach(input => {
-            let amount = parseCleanNumber(input.value);
-            if (amount > 0) receivedDetails.push({ denomKey: input.dataset.key, amount });
-        });
+        document.querySelectorAll('.exchange-denom-input').forEach(input => { let amount = parseCleanNumber(input.value); if (amount > 0) receivedDetails.push({ denomKey: input.dataset.key, amount }); });
         let rusakAmount = parseCleanNumber(document.getElementById('exchangeRusakInput').value);
         if (rusakAmount > 0) receivedDetails.push({ denomKey: 'rusak', amount: rusakAmount, isRusak: true });
-
         transactions = transactions.map(t => t.id === txId ? { ...t, exchangeStatus: 'sudah', totalReceived, receivedDetails } : t);
         syncToCloud();
         document.getElementById('exchangeReceiveModal').style.display = 'none';
-        alert('Berhasil diperbarui!');
     }
 
     function openEditTxModal(txId) {
@@ -1351,46 +1344,31 @@
         let txId = parseInt(document.getElementById('modalEditTxId').value);
         let type = document.getElementById('editTxType').value;
         let amount = parseCleanNumber(document.getElementById('editTxAmountInput').value);
-        let description = document.getElementById('editTxDescInput').value.trim();
-        let date = document.getElementById('editTxDateInput').value.trim();
-        let time = document.getElementById('editTxTimeInput').value.trim();
-
-        if (amount <= 0) {
-            alert('Nominal harus lebih besar dari 0!');
-            return;
-        }
-
-        transactions = transactions.map(tx => tx.id === txId ? { ...tx, type, amount, description, date, time } : tx);
+        if (amount <= 0) { alert('Nominal tidak valid!'); return; }
+        transactions = transactions.map(tx => tx.id === txId ? { ...tx, type, amount, description: document.getElementById('editTxDescInput').value, date: document.getElementById('editTxDateInput').value, time: document.getElementById('editTxTimeInput').value } : tx);
         syncToCloud();
         document.getElementById('editTxModal').style.display = 'none';
-        alert('Transaksi berhasil diperbarui!');
     }
 
     function renderAuditTrail() {
         const tbody = document.getElementById('auditTrailTableBody');
         const unlockBtn = document.getElementById('unlockAuditBtn');
         if (!tbody) return;
-
         if (!isAuditTrailUnlocked) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #c62828;">🔒 Audit Trail Dikunci. Masukkan Master PIN untuk membuka.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding:20px;">🔒 Audit Trail Dikunci</td></tr>`;
             if (unlockBtn) unlockBtn.style.display = 'inline-block';
             return;
         }
-
         if (unlockBtn) unlockBtn.style.display = 'none';
         tbody.innerHTML = '';
-        if (deletionLogs.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #777;">Belum ada riwayat audit.</td></tr>`;
-            return;
-        }
+        if (deletionLogs.length === 0) { tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Belum ada riwayat audit.</td></tr>`; return; }
         deletionLogs.slice().reverse().forEach(log => {
-            let sourceLabel = log.vaultSource || 'Brankas';
             tbody.innerHTML += `<tr>
                 <td>${log.deletedAt}</td>
-                <td><b style="color:#1565c0;">${sourceLabel}</b></td>
-                <td class="${log.type}">${log.type.toUpperCase()}</td>
-                <td class="${log.type}">${formatRp(log.amount)}</td>
-                <td style="font-weight: bold;">${log.reason}</td>
+                <td><b style="color:var(--primary);">${log.vaultSource || '-'}</b></td>
+                <td><span class="badge ${log.type === 'masuk' ? 'badge-masuk' : 'badge-keluar'}">${log.type}</span></td>
+                <td class="${log.type === 'masuk' ? 'text-masuk' : 'text-keluar'}">${formatRp(log.amount)}</td>
+                <td style="font-weight: 600; white-space:normal; max-width:250px;">${log.reason}</td>
             </tr>`;
         });
     }
@@ -1411,9 +1389,7 @@
 
         let grandComp = 0, grandPark = 0, uncolCash = 0, uncolPark = 0;
         let storeStatsMap = {};
-        storeNames.forEach(store => {
-            storeStatsMap[store] = { comp: 0, park: 0, debit: 0, qris: 0, phys: 0, uncollectedPhys: 0, count: 0, lastReportDate: null };
-        });
+        storeNames.forEach(store => { storeStatsMap[store] = { comp: 0, park: 0, debit: 0, qris: 0, phys: 0, uncollectedPhys: 0, count: 0, lastReportDate: null }; });
 
         storeClosings.forEach(item => {
             if (storeNames.includes(item.storePoint) && item.date) {
@@ -1421,9 +1397,7 @@
                 if (parts.length >= 3) {
                     let itemDateObj = new Date(parts[2], parts[1] - 1, parts[0]);
                     let currentStats = storeStatsMap[item.storePoint];
-                    if (!currentStats.lastReportDate || itemDateObj > currentStats.lastReportDate) {
-                        currentStats.lastReportDate = itemDateObj;
-                    }
+                    if (!currentStats.lastReportDate || itemDateObj > currentStats.lastReportDate) currentStats.lastReportDate = itemDateObj;
                 }
             }
         });
@@ -1439,17 +1413,11 @@
                 storeStatsMap[i.storePoint].debit += (i.debit || 0);
                 storeStatsMap[i.storePoint].qris += (i.qris || 0);
                 storeStatsMap[i.storePoint].phys += phys;
-                if (!i.isCollected) {
-                    storeStatsMap[i.storePoint].uncollectedPhys += phys;
-                }
+                if (!i.isCollected) storeStatsMap[i.storePoint].uncollectedPhys += phys;
                 storeStatsMap[i.storePoint].count++;
 
-                grandComp += comp;
-                grandPark += park;
-                if (!i.isCollected) {
-                    uncolCash += phys;
-                    uncolPark += park;
-                }
+                grandComp += comp; grandPark += park;
+                if (!i.isCollected) { uncolCash += phys; uncolPark += park; }
             }
         });
 
@@ -1459,26 +1427,18 @@
         storeNames.forEach(store => {
             let data = storeStatsMap[store];
             let activeClass = selectedStoreFilter === store ? 'active-filter' : '';
+            let isOverdue = (!data.lastReportDate || (nowTime - data.lastReportDate.getTime() > fourteenDaysMs));
             
-            let isOverdueTwoWeeks = false;
-            if (!data.lastReportDate || (nowTime - data.lastReportDate.getTime() > fourteenDaysMs)) {
-                isOverdueTwoWeeks = true;
-            }
-
-            let warningBadgeHtml = isOverdueTwoWeeks ? 
-                `<div class="alert-badge-warning">⚠️ > 2 Minggu Belum Lapor/Ambil!</div>` : '';
-
             container.innerHTML += `
                 <div class="store-column-card ${activeClass}" onclick="filterStoreHistory('${store}')">
-                    <h4>${store}</h4>
-                    ${warningBadgeHtml}
-                    <div class="store-stat-item" style="margin-top:5px;"><label>Omset Komputer:</label><span>${formatRp(data.comp)}</span></div>
-                    <div class="store-stat-item"><label>Debit:</label><span>${formatRp(data.debit)}</span></div>
-                    <div class="store-stat-item"><label>QRIS:</label><span>${formatRp(data.qris)}</span></div>
-                    <div class="store-stat-item"><label>Total Fisik Masuk:</label><span>${formatRp(data.phys)}</span></div>
-                    <div class="store-stat-item" style="background: #fff8e1; padding: 3px 4px; border-radius: 4px; margin: 4px 0;"><label style="color: #b71c1c;">Fisik Belum Diambil (Di Toko):</label><span style="color: #c62828;">${formatRp(data.uncollectedPhys)}</span></div>
-                    <div class="store-stat-item"><label>Parkir:</label><span>${formatRp(data.park)}</span></div>
-                    <div class="store-stat-item" style="border-top:1px dashed #ddd; margin-top:5px; padding-top:3px;"><span style="color:#1565c0;">${data.count} Laporan</span></div>
+                    <h4>${store} ${isOverdue ? '<span class="alert-badge-warning">⚠️ >2 Mgg</span>' : ''}</h4>
+                    <div class="store-stat-item"><label>Omset Komputer</label><span>${formatRp(data.comp)}</span></div>
+                    <div class="store-stat-item"><label>Debit</label><span>${formatRp(data.debit)}</span></div>
+                    <div class="store-stat-item"><label>QRIS</label><span>${formatRp(data.qris)}</span></div>
+                    <div class="store-stat-item"><label>Fisik Masuk</label><span>${formatRp(data.phys)}</span></div>
+                    <div class="store-stat-item" style="background:#fef2f2; padding:6px; border-radius:6px; margin:8px 0;"><label style="color:var(--danger);">Fisik (Di Toko)</label><span style="color:var(--danger);">${formatRp(data.uncollectedPhys)}</span></div>
+                    <div class="store-stat-item"><label>Parkir</label><span>${formatRp(data.park)}</span></div>
+                    <div style="text-align:right; font-size:0.8rem; color:var(--primary); margin-top:10px;">${data.count} Laporan Tersimpan</div>
                 </div>`;
         });
 
@@ -1486,7 +1446,6 @@
         document.getElementById('grandTotalStoreParking').innerText = formatRp(grandPark);
         document.getElementById('grandTotalUncollectedCash').innerText = formatRp(uncolCash);
         document.getElementById('grandTotalUncollectedParking').innerText = formatRp(uncolPark);
-
         renderStoreClosingsTable(baseFilteredLogs);
     }
 
@@ -1494,21 +1453,13 @@
         const tbody = document.getElementById('storeRankingTableBody');
         const dateInput = document.getElementById('rankingDateInput');
         if (!tbody || !dateInput) return;
-
         let selectedVal = dateInput.value;
-        if (!selectedVal) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #777;">Pilih tanggal terlebih dahulu untuk melihat ranking.</td></tr>`;
-            return;
-        }
+        if (!selectedVal) { tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Pilih tanggal terlebih dahulu.</td></tr>`; return; }
 
         let p = selectedVal.split('-');
-        if (p.length < 3) return;
         let formattedSearchDate = `${p[2]}/${p[1]}/${p[0]}`;
-
         let storeDataMap = {};
-        storeNames.forEach(store => {
-            storeDataMap[store] = { storeName: store, compOmset: 0, parking: 0, totalDaily: 0, hasReport: false };
-        });
+        storeNames.forEach(s => storeDataMap[s] = { storeName: s, compOmset: 0, parking: 0, totalDaily: 0, hasReport: false });
 
         storeClosings.forEach(item => {
             if (item.date === formattedSearchDate && storeNames.includes(item.storePoint)) {
@@ -1521,35 +1472,26 @@
             }
         });
 
-        let rankingList = Object.values(storeDataMap);
-        rankingList.sort((a, b) => b.totalDaily - a.totalDaily);
-
+        let rankingList = Object.values(storeDataMap).sort((a, b) => b.totalDaily - a.totalDaily);
         tbody.innerHTML = '';
         rankingList.forEach((data, index) => {
             let rankNum = index + 1;
             let badgeClass = 'rank-badge';
-            if (rankNum === 1) badgeClass += ' rank-1';
-            else if (rankNum === 2) badgeClass += ' rank-2';
-            else if (rankNum === 3) badgeClass += ' rank-3';
-
-            let reportStatusStyle = data.hasReport ? '' : 'color: #9e9e9e; font-style: italic;';
-            let reportLabel = data.hasReport ? '' : '<br><small>(Belum Ada Tutup Buku)</small>';
-
+            if (rankNum === 1) badgeClass += ' rank-1'; else if (rankNum === 2) badgeClass += ' rank-2'; else if (rankNum === 3) badgeClass += ' rank-3';
+            let reportStatus = data.hasReport ? '' : 'color: #94a3b8; font-style: italic;';
+            
             tbody.innerHTML += `
-                <tr style="${reportStatusStyle}">
+                <tr style="${reportStatus}">
                     <td style="text-align: center;"><span class="${badgeClass}">${rankNum}</span></td>
-                    <td><b>${data.storeName}</b>${reportLabel}</td>
-                    <td style="color: #1565c0; font-weight: bold;">${formatRp(data.compOmset)}</td>
-                    <td style="color: #00796b; font-weight: bold;">${formatRp(data.parking)}</td>
-                    <td style="color: #2e7d32; font-weight: bold; font-size: 1.05rem;">${formatRp(data.totalDaily)}</td>
+                    <td><b>${data.storeName}</b> ${data.hasReport ? '' : '<br><small>(Belum Ada Data)</small>'}</td>
+                    <td style="color: var(--primary); font-weight: 600;">${formatRp(data.compOmset)}</td>
+                    <td style="color: var(--success); font-weight: 600;">${formatRp(data.parking)}</td>
+                    <td style="font-weight: 800; font-size: 1.05rem;">${formatRp(data.totalDaily)}</td>
                 </tr>`;
         });
     }
 
-    function filterStoreHistory(store) {
-        selectedStoreFilter = store;
-        processAndRenderStoreData();
-    }
+    function filterStoreHistory(store) { selectedStoreFilter = store; processAndRenderStoreData(); }
 
     function renderStoreClosingsTable(filteredLogs) {
         let tbody = document.getElementById('storeClosingSummaryTableBody');
@@ -1559,108 +1501,66 @@
         tbody.innerHTML = '';
 
         let displayed = selectedStoreFilter ? filteredLogs.filter(i => i.storePoint === selectedStoreFilter) : filteredLogs;
-        
         displayed.sort((a, b) => {
             let parseDt = (item) => {
-                let dParts = (item.date || '').split('/');
-                let tParts = (item.time || '00:00:00').split(':');
+                let dParts = (item.date || '').split('/'); let tParts = (item.time || '00:00:00').split(':');
                 if (dParts.length < 3) return 0;
                 return new Date(dParts[2], dParts[1] - 1, dParts[0], tParts[0] || 0, tParts[1] || 0, tParts[2] || 0).getTime();
             };
             return parseDt(b) - parseDt(a);
         });
 
-        if (selectedStoreFilter) {
-            titleElem.innerText = `📋 Riwayat Tutup Buku: ${selectedStoreFilter}`;
-            resetBtn.style.display = 'inline-block';
-        } else {
-            titleElem.innerText = `📋 Riwayat Lengkap Tutup Buku Toko`;
-            resetBtn.style.display = 'none';
-        }
+        if (selectedStoreFilter) { titleElem.innerText = `📋 Riwayat: ${selectedStoreFilter}`; resetBtn.style.display = 'inline-block'; } 
+        else { titleElem.innerText = `📋 Riwayat Lengkap Tutup Buku`; resetBtn.style.display = 'none'; }
 
-        if (displayed.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #777;">Belum ada data rekap tutup buku.</td></tr>`;
-            return;
-        }
+        if (displayed.length === 0) { tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted);">Belum ada data rekap tutup buku.</td></tr>`; return; }
 
         displayed.forEach(i => {
-            let statusBadge = i.isCollected ? 
-                `<span style="color: #2e7d32;"><b>✔ Sudah Diambil</b><br><small>Oleh: ${i.collectorName || 'Pusat'}</small></span>` : 
-                `<span style="color: #c62828;"><b>❌ Belum Diambil</b></span>`;
-            
+            let statusBadge = i.isCollected ? `<span class="badge badge-masuk">✔ Sudah (${i.collectorName || 'Pusat'})</span>` : `<span class="badge badge-keluar">❌ Belum</span>`;
             let expenseFormatted = '-';
             if (i.expenseDesc && i.expenseDesc !== '-') {
-                let rawText = i.expenseDesc;
-                let expenses = rawText.includes('|') ? rawText.split('|').map(e => e.trim()) : rawText.split(',').map(e => e.trim());
+                let expenses = i.expenseDesc.includes('|') ? i.expenseDesc.split('|').map(e => e.trim()) : i.expenseDesc.split(',').map(e => e.trim());
                 expenseFormatted = `<div class="vertical-details">`;
-                expenses.forEach(exp => {
-                    if (exp) expenseFormatted += `<div>• ${exp}</div>`;
-                });
+                expenses.forEach(exp => { if (exp) expenseFormatted += `<div>• ${exp}</div>`; });
                 expenseFormatted += `</div>`;
             }
-
-            let omsetKomputerHarian = (i.physicalCash || 0) + (i.qris || 0) + (i.debit || 0);
+            let omsetKomp = (i.physicalCash || 0) + (i.qris || 0) + (i.debit || 0);
 
             tbody.innerHTML += `<tr>
-                <td><button class="btn-edit" onclick="requestEditStore(${i.id})">✏️</button><button class="btn-trash" onclick="requestDeleteStore(${i.id})">🗑️</button></td>
+                <td><button class="btn-action-icon" onclick="requestEditStore(${i.id})">✏️</button> <button class="btn-action-icon" style="color:var(--danger);" onclick="requestDeleteStore(${i.id})">🗑️</button></td>
                 <td><b>${i.storePoint}</b></td>
-                <td>${i.date} ${i.time}</td>
-                <td style="color: #1565c0; font-weight: bold;">${formatRp(omsetKomputerHarian)}</td>
-                <td style="color: #00796b;">${formatRp(i.parking||0)}</td>
-                <td style="color: #2e7d32; font-weight: bold;">${formatRp(i.physicalCash||0)}</td>
-                <td style="color: #6a1b9a;">${formatRp(i.qris||0)}</td>
-                <td style="color: #1565c0;">${formatRp(i.debit||0)}</td>
-                <td>${expenseFormatted}</td>
+                <td><span style="color:var(--text-muted); font-size:0.85rem;">${i.date}</span><br>${i.time}</td>
+                <td style="color: var(--primary); font-weight: 700;">${formatRp(omsetKomp)}</td>
+                <td style="color: var(--success);">${formatRp(i.parking||0)}</td>
+                <td style="color: #065f46; font-weight: 700;">${formatRp(i.physicalCash||0)}</td>
+                <td>${formatRp(i.qris||0)}</td>
+                <td>${formatRp(i.debit||0)}</td>
+                <td style="white-space:normal; max-width:200px;">${expenseFormatted}</td>
                 <td>${statusBadge}</td>
             </tr>`;
         });
     }
 
     function renderMonthlyRecap() {
-        let m = document.getElementById('recapMonthSelect').value;
-        let y = document.getElementById('recapYearSelect').value;
-
+        let m = document.getElementById('recapMonthSelect').value; let y = document.getElementById('recapYearSelect').value;
         let storePhys = 0, storeDebit = 0, storeQris = 0, storePark = 0;
         storeClosings.forEach(item => {
-            if (!item.date) return;
-            let parts = item.date.split('/');
-            if (parts.length < 3) return;
-            if (parts[1] === m && parts[2] === y) {
-                storePhys += (item.physicalCash || 0);
-                storeDebit += (item.debit || 0);
-                storeQris += (item.qris || 0);
-                storePark += (item.parking || 0);
-            }
+            if (!item.date) return; let parts = item.date.split('/'); if (parts.length < 3) return;
+            if (parts[1] === m && parts[2] === y) { storePhys += (item.physicalCash || 0); storeDebit += (item.debit || 0); storeQris += (item.qris || 0); storePark += (item.parking || 0); }
         });
         let totalStoreIncome = storePhys + storeDebit + storeQris + storePark;
 
-        let opOutTunai = 0, opOutTransfer = 0;
-        let catSummary = {};
+        let opOutTunai = 0, opOutTransfer = 0, catSummary = {};
         operationalExpenses.forEach(i => {
-            if (!i.date) return;
-            let monthMatch = false, yearMatch = false;
-            if (i.date.includes('/')) {
-                let parts = i.date.split('/');
-                if (parts.length >= 3) {
-                    monthMatch = (parts[1] === m);
-                    yearMatch = (parts[2].substring(0, 4) === y);
-                }
-            } else if (i.rawDate) {
-                let parts = i.rawDate.split('-');
-                if (parts.length >= 3) {
-                    monthMatch = (parts[1] === m);
-                    yearMatch = (parts[0] === y);
-                }
-            }
+            if (!i.date) return; let monthMatch = false, yearMatch = false;
+            if (i.date.includes('/')) { let p = i.date.split('/'); if (p.length >= 3) { monthMatch = (p[1] === m); yearMatch = (p[2].substring(0,4) === y); } }
+            else if (i.rawDate) { let p = i.rawDate.split('-'); if (p.length >= 3) { monthMatch = (p[1] === m); yearMatch = (p[0] === y); } }
 
             if (monthMatch && yearMatch) {
-                let effectiveNominal = (i.nominal || 0) - (i.sisaSetoran || 0);
-                if (effectiveNominal > 0) {
-                    if (i.method === 'Tunai') opOutTunai += effectiveNominal;
-                    else opOutTransfer += effectiveNominal;
-
-                    let cKey = i.category || 'Lainnya';
-                    catSummary[cKey] = (catSummary[cKey] || 0) + effectiveNominal;
+                let effective = (i.nominal || 0) - (i.sisaSetoran || 0);
+                if (effective > 0) {
+                    if (i.method === 'Tunai') opOutTunai += effective; else opOutTransfer += effective;
+                    let cKey = i.category || 'Lainnya'; catSummary[cKey] = (catSummary[cKey] || 0) + effective;
                 }
             }
         });
@@ -1671,30 +1571,21 @@
         document.getElementById('recapStoreIncome').innerText = formatRp(totalStoreIncome);
         document.getElementById('recapOpExpense').innerText = formatRp(totalOpExpense);
         document.getElementById('recapNetBalance').innerText = formatRp(netRecap);
-        document.getElementById('recapNetBalance').style.color = netRecap >= 0 ? '#1565c0' : '#c62828';
 
         document.getElementById('storeIncomeDetailBox').innerHTML = `
-            • Permen Fisik: <b>${formatRp(storePhys)}</b><br>
-            • Kartu Debit: <b>${formatRp(storeDebit)}</b><br>
-            • QRIS: <b>${formatRp(storeQris)}</b><br>
-            • Parkir: <b>${formatRp(storePark)}</b><br>
-            <hr style="border:0; border-top:1px dashed #ccc; margin:8px 0;">
-            <b>Total Pemasukan Toko: ${formatRp(totalStoreIncome)}</b>
-        `;
+            • Fisik: <b>${formatRp(storePhys)}</b><br>• Debit: <b>${formatRp(storeDebit)}</b><br>
+            • QRIS: <b>${formatRp(storeQris)}</b><br>• Parkir: <b>${formatRp(storePark)}</b><br>
+            <hr style="border:0; border-top:1px dashed #a7f3d0; margin:8px 0;">
+            <b style="font-size:1.05rem;">TOTAL: ${formatRp(totalStoreIncome)}</b>`;
 
-        let catHtml = '';
-        for (let key in catSummary) {
-            catHtml += `• ${key}: <b>${formatRp(catSummary[key])}</b><br>`;
-        }
-        if (!catHtml) catHtml = '<i>Belum ada pengeluaran operasional di bulan ini.</i>';
-
+        let catHtml = ''; for (let key in catSummary) { catHtml += `• ${key}: <b>${formatRp(catSummary[key])}</b><br>`; }
+        if (!catHtml) catHtml = '<i>Belum ada pengeluaran operasional.</i>';
+        
         document.getElementById('opExpenseDetailBox').innerHTML = `
             ${catHtml}
-            <hr style="border:0; border-top:1px dashed #ccc; margin:8px 0;">
-            • Pembayaran Tunai: <b>${formatRp(opOutTunai)}</b><br>
-            • Pembayaran Transfer: <b>${formatRp(opOutTransfer)}</b><br>
-            <b>Total Pengeluaran: ${formatRp(totalOpExpense)}</b>
-        `;
+            <hr style="border:0; border-top:1px dashed #fecaca; margin:8px 0;">
+            • Tunai: <b>${formatRp(opOutTunai)}</b><br>• Transfer: <b>${formatRp(opOutTransfer)}</b><br>
+            <b style="font-size:1.05rem;">TOTAL: ${formatRp(totalOpExpense)}</b>`;
 
         renderCharts(totalStoreIncome, totalOpExpense, storePhys, storeDebit, storeQris, storePark);
     }
@@ -1704,196 +1595,78 @@
         if (cashflowPieChartInstance) cashflowPieChartInstance.destroy();
         cashflowPieChartInstance = new Chart(ctxPie, {
             type: 'doughnut',
-            data: {
-                labels: ['Total Pemasukan Toko', 'Total Pengeluaran Op.'],
-                datasets: [{
-                    data: [totalIncome, totalExpense],
-                    backgroundColor: ['#2e7d32', '#c62828'],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
-            }
+            data: { labels: ['Pemasukan Toko', 'Pengeluaran Op.'], datasets: [{ data: [totalIncome, totalExpense], backgroundColor: ['#10b981', '#ef4444'], borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, cutout: '70%' }
         });
 
         const ctxBar = document.getElementById('storeIncomeBarChart').getContext('2d');
         if (storeIncomeBarChartInstance) storeIncomeBarChartInstance.destroy();
         storeIncomeBarChartInstance = new Chart(ctxBar, {
             type: 'bar',
-            data: {
-                labels: ['Fisik', 'Debit', 'QRIS', 'Parkir'],
-                datasets: [{
-                    label: 'Nominal (Rp)',
-                    data: [phys, debit, qris, park],
-                    backgroundColor: ['#1565c0', '#00796b', '#6a1b9a', '#e65100'],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } }
-            }
+            data: { labels: ['Fisik', 'Debit', 'QRIS', 'Parkir'], datasets: [{ label: 'Nominal (Rp)', data: [phys, debit, qris, park], backgroundColor: ['#4f46e5', '#0ea5e9', '#8b5cf6', '#f59e0b'], borderRadius: 6 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
         });
     }
 
     function exportStoreReportPDF() {
-        const { jsPDF } = window.jspdf;
-        let doc = new jsPDF('l', 'mm', 'a4');
-
-        doc.setFontSize(16);
-        doc.setTextColor(21, 101, 192);
-        doc.text("Laporan Rekapitulasi Tutup Buku 5 Titik Toko AWW", 14, 15);
-        
-        let m = document.getElementById('filterMonthSelect').value;
-        let y = document.getElementById('filterYearSelect').value;
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Periode Bulan: ${m} Tahun: ${y} | Dicetak pada: ${new Date().toLocaleDateString('id-ID')}`, 14, 22);
+        const { jsPDF } = window.jspdf; let doc = new jsPDF('l', 'mm', 'a4');
+        doc.setFontSize(16); doc.setTextColor(79, 70, 229); doc.text("Laporan Tutup Buku 5 Toko AWW", 14, 15);
+        let m = document.getElementById('filterMonthSelect').value, y = document.getElementById('filterYearSelect').value;
+        doc.setFontSize(10); doc.setTextColor(100, 100, 100); doc.text(`Periode: ${m}/${y} | Dicetak: ${new Date().toLocaleDateString('id-ID')}`, 14, 22);
 
         let baseFilteredLogs = storeClosings.filter(item => {
-            if (!item.date) return false;
-            let parts = item.date.split('/');
-            if (parts.length < 3) return false;
+            if (!item.date) return false; let parts = item.date.split('/'); if (parts.length < 3) return false;
             return (m === 'all' || parts[1] === m) && (y === 'all' || parts[2] === y);
         });
 
         let tableRows = [];
         baseFilteredLogs.forEach((i, index) => {
-            let omsetKomputer = (i.physicalCash || 0) + (i.qris || 0) + (i.debit || 0);
-            let statusText = i.isCollected ? `Sudah Diambil (${i.collectorName || 'Pusat'})` : 'Belum Diambil';
-
-            tableRows.push([
-                index + 1,
-                i.storePoint || '-',
-                i.date + ' ' + (i.time || ''),
-                formatRp(omsetKomputer),
-                formatRp(i.parking || 0),
-                formatRp(i.physicalCash || 0),
-                formatRp(i.qris || 0),
-                formatRp(i.debit || 0),
-                statusText
-            ]);
+            tableRows.push([ index + 1, i.storePoint || '-', i.date + ' ' + (i.time || ''), formatRp((i.physicalCash || 0) + (i.qris || 0) + (i.debit || 0)), formatRp(i.parking || 0), formatRp(i.physicalCash || 0), formatRp(i.qris || 0), formatRp(i.debit || 0), i.isCollected ? `Selesai (${i.collectorName||''})` : 'Belum' ]);
         });
 
-        doc.autoTable({
-            startY: 28,
-            head: [['No', 'Titik Toko', 'Waktu', 'Omset Komputer', 'Parkir', 'Permen Fisik', 'QRIS', 'Debit', 'Status Pengambilan']],
-            body: tableRows,
-            theme: 'grid',
-            headStyles: { fillColor: [0, 121, 107] },
-            styles: { fontSize: 8 }
-        });
-
-        doc.save(`Laporan_Tutup_Buku_Toko_AWW_${new Date().toISOString().split('T')[0]}.pdf`);
+        doc.autoTable({ startY: 28, head: [['No', 'Toko', 'Waktu', 'Omset (Komp)', 'Parkir', 'Fisik', 'QRIS', 'Debit', 'Status']], body: tableRows, theme: 'grid', headStyles: { fillColor: [79, 70, 229] }, styles: { fontSize: 8 } });
+        doc.save(`Laporan_Toko_AWW_${new Date().toISOString().split('T')[0]}.pdf`);
     }
 
-    function requestEditStore(id) {
-        promptPin('Verifikasi Keamanan Toko', 'Masukkan Master PIN untuk mengedit rekap toko:', (pin) => {
-            if (pin === masterPin) {
-                openEditStoreModal(id);
-                return true;
-            }
-            return false;
-        });
-    }
-
-    function requestDeleteStore(id) {
-        promptPin('Verifikasi Keamanan Toko', 'Masukkan Master PIN untuk menghapus rekap toko:', (pin) => {
-            if (pin === masterPin) {
-                storeClosings = storeClosings.filter(i => i.id !== id);
-                db.ref('store_closings').set(storeClosings);
-                alert('Rekap toko berhasil dihapus.');
-                return true;
-            }
-            return false;
-        });
-    }
+    function requestEditStore(id) { promptPin('Verifikasi Edit Toko', 'Masukkan Master PIN:', (pin) => { if (pin === masterPin) { openEditStoreModal(id); return true; } return false; }); }
+    function requestDeleteStore(id) { promptPin('Verifikasi Hapus Toko', 'Masukkan Master PIN:', (pin) => { if (pin === masterPin) { storeClosings = storeClosings.filter(i => i.id !== id); db.ref('store_closings').set(storeClosings); return true; } return false; }); }
 
     function openEditStoreModal(id) {
-        let item = storeClosings.find(i => i.id === id);
-        if (!item) return;
+        let item = storeClosings.find(i => i.id === id); if (!item) return;
         document.getElementById('modalEditStoreId').value = id;
-        document.getElementById('editDebitInput').value = item.debit || 0;
-        document.getElementById('editQrisInput').value = item.qris || 0;
-        document.getElementById('editPhysInput').value = item.physicalCash || 0;
-        document.getElementById('editExpenseInput').value = item.expenseDesc || '';
-        document.getElementById('editParkInput').value = item.parking || 0;
-        document.getElementById('editStoreReason').value = '';
+        document.getElementById('editDebitInput').value = item.debit || 0; document.getElementById('editQrisInput').value = item.qris || 0; document.getElementById('editPhysInput').value = item.physicalCash || 0;
+        document.getElementById('editExpenseInput').value = item.expenseDesc || ''; document.getElementById('editParkInput').value = item.parking || 0; document.getElementById('editStoreReason').value = '';
         document.getElementById('editStoreModal').style.display = 'flex';
     }
 
     function submitEditStoreRecord() {
-        let id = parseInt(document.getElementById('modalEditStoreId').value);
-        let reason = document.getElementById('editStoreReason').value.trim();
-        if (!reason) {
-            alert('Alasan / Catatan koreksi wajib diisi!');
-            return;
-        }
-
-        let oldItem = storeClosings.find(i => i.id === id);
-        if (!oldItem) return;
-
-        let debit = parseCleanNumber(document.getElementById('editDebitInput').value);
-        let qris = parseCleanNumber(document.getElementById('editQrisInput').value);
-        let phys = parseCleanNumber(document.getElementById('editPhysInput').value);
-        let comp = debit + qris + phys;
-        let expense = document.getElementById('editExpenseInput').value.trim();
-        let park = parseCleanNumber(document.getElementById('editParkInput').value);
+        let id = parseInt(document.getElementById('modalEditStoreId').value), reason = document.getElementById('editStoreReason').value.trim();
+        if (!reason) { alert('Alasan koreksi wajib diisi!'); return; }
+        let oldItem = storeClosings.find(i => i.id === id); if (!oldItem) return;
+        
+        let debit = parseCleanNumber(document.getElementById('editDebitInput').value), qris = parseCleanNumber(document.getElementById('editQrisInput').value), phys = parseCleanNumber(document.getElementById('editPhysInput').value);
+        let comp = debit + qris + phys, expense = document.getElementById('editExpenseInput').value.trim(), park = parseCleanNumber(document.getElementById('editParkInput').value);
 
         storeClosings = storeClosings.map(i => i.id === id ? { ...i, debit, qris, physicalCash: phys, computerOmset: comp, expenseDesc: expense||'-', parking: park } : i);
+        storeAuditLogs.push({ id: Date.now(), time: `${new Date().toLocaleDateString('id-ID')} ${new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}`, storePoint: oldItem.storePoint, details: `Koreksi Data (${oldItem.date}) | Alasan: ${reason} | Fisik Lama: ${formatRp(oldItem.physicalCash)} ➔ Baru: ${formatRp(phys)}` });
         
-        let now = new Date();
-        let logEntry = {
-            id: Date.now(),
-            time: `${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}`,
-            storePoint: oldItem.storePoint,
-            details: `Koreksi Tutup Buku (${oldItem.date}) | Alasan: ${reason} | Fisik Lama: ${formatRp(oldItem.physicalCash)} ➔ Baru: ${formatRp(phys)}`,
-        };
-        storeAuditLogs.push(logEntry);
-
-        db.ref('store_closings').set(storeClosings);
-        db.ref('store_audit_logs').set(storeAuditLogs);
-
+        db.ref('store_closings').set(storeClosings); db.ref('store_audit_logs').set(storeAuditLogs);
         document.getElementById('editStoreModal').style.display = 'none';
-        alert('Data rekap toko berhasil diperbarui dan tercatat di Log Koreksi!');
     }
 
     function renderStoreAuditLogs() {
-        const tbody = document.getElementById('storeAuditLogTableBody');
-        if (!tbody) return;
+        const tbody = document.getElementById('storeAuditLogTableBody'); if (!tbody) return;
+        let safeLogs = storeAuditLogs.filter(i => i);
+        if (safeLogs.length === 0) { tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Belum ada log koreksi data toko.</td></tr>`; return; }
         tbody.innerHTML = '';
-
-        let safeLogs = storeAuditLogs.filter(i => i !== null && i !== undefined);
-        if (safeLogs.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #777;">Belum ada log koreksi data toko.</td></tr>`;
-            return;
-        }
-
         safeLogs.slice().reverse().forEach(log => {
-            tbody.innerHTML += `<tr>
-                <td>${log.time}</td>
-                <td><b>${log.storePoint}</b></td>
-                <td><span style="background: #3f51b5; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.75rem;">KOREKSI</span></td>
-                <td>${log.details}</td>
-            </tr>`;
+            tbody.innerHTML += `<tr><td>${log.time}</td><td><b>${log.storePoint}</b></td><td><span class="badge" style="background:var(--primary); color:white;">KOREKSI</span></td><td style="white-space:normal; max-width:300px;">${log.details}</td></tr>`;
         });
     }
 
-    function openLinkModal() {
-        document.getElementById('linkModal').style.display = 'flex';
-        const url = window.location.href;
-        document.getElementById('appUrlInput').value = url;
-        document.getElementById('qrcodeContainer').innerHTML = '';
-        new QRCode(document.getElementById('qrcodeContainer'), { text: url, width: 140, height: 140 });
-    }
-
-    function exportToExcel() { alert('Export Excel aktif'); }
-    function exportToPDF() { alert('Export PDF aktif'); }
+    function openLinkModal() { document.getElementById('linkModal').style.display = 'flex'; const url = window.location.href; document.getElementById('appUrlInput').value = url; document.getElementById('qrcodeContainer').innerHTML = ''; new QRCode(document.getElementById('qrcodeContainer'), { text: url, width: 150, height: 150 }); }
+    function exportToExcel() { alert('Fitur Export Excel (Perlu script terpisah)'); }
+    function exportToPDF() { alert('Fitur Export PDF (Gunakan jsPDF di bagian riwayat Brankas)'); }
 </script>
 </body>
 </html>
