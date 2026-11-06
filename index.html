@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="4.0.2-ui-wider-columns">
+    <meta name="app-version" content="4.0.3-mobile-optimized">
     
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -73,12 +73,12 @@
         }
         .total-card h3 { color: rgba(255,255,255,0.9); font-weight: 500; font-size: 1rem; }
         .grand-total-amount { 
-            font-size: 2.3rem; /* Dikembalikan menjadi besar */
+            font-size: 2.3rem; 
             font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-top: 5px; 
-            white-space: nowrap; /* Teks lurus, dilarang turun baris */
+            white-space: nowrap; 
         }
 
-        /* VAULT GRID - KOLOM DIPERLEBAR AGAR TIDAK OFFSIDE */
+        /* VAULT GRID */
         .vault-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
         .vault-card { 
             background: #ffffff; padding: 22px; border-radius: var(--radius-md); 
@@ -88,9 +88,9 @@
         .vault-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
         .vault-card h4 { font-size: 1.05rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
         .vault-card .balance { 
-            font-size: 1.6rem; /* Nominal besar & jelas */
+            font-size: 1.6rem; 
             font-weight: 800; color: #0f172a; margin-bottom: 15px; 
-            white-space: nowrap; /* Dilarang turun baris */
+            white-space: nowrap; 
         }
         .pin-btn { 
             background: var(--danger-light); color: var(--danger); border: none; padding: 10px 12px; 
@@ -121,7 +121,7 @@
         .denom-input-table tr:last-child td { border-bottom: none; }
         .denom-input-table input { 
             text-align: right; font-weight: 700; font-size: 1.15rem; padding: 10px; 
-            background: #f8fafc; border: 1px solid transparent; width: 100%; min-width: 140px; /* Minimal width agar tidak terjepit */
+            background: #f8fafc; border: 1px solid transparent; width: 100%; min-width: 140px; 
         }
         .denom-input-table input:focus { background: #fff; border: 1px solid var(--primary); }
 
@@ -145,13 +145,13 @@
         .tab-btn.master-tab { color: #7c3aed; }
         .tab-btn.master-tab.active { background: #7c3aed; color: white; }
 
-        /* SUMMARIES & BADGES (KOLOM DIPERLEBAR) */
+        /* SUMMARIES & BADGES */
         .denom-summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
         .denom-summary-card { background: #fff; border: 1px solid var(--border); padding: 18px 15px; border-radius: var(--radius-md); text-align: center; box-shadow: var(--shadow-sm); transition: 0.2s; }
         .denom-badge { font-size: 2rem; margin-bottom: 8px; }
         .denom-summary-card .denom-amount { 
             font-weight: 800; font-size:1.2rem; 
-            white-space: nowrap; /* Teks lurus */
+            white-space: nowrap; 
         }
 
         /* TABLES */
@@ -169,7 +169,7 @@
         .text-keluar { color: var(--danger); font-weight: 700; }
         .vertical-details { font-size: 0.85rem; line-height: 1.5; color: #475569; white-space: normal; } 
 
-        /* STORE DASHBOARD (SLIDE 2) - KOLOM DIPERLEBAR */
+        /* STORE DASHBOARD (SLIDE 2) */
         .grand-store-summary { 
             background: #fff; border: 1px solid var(--border); padding: 20px; 
             border-radius: var(--radius-md); margin-bottom: 24px; display: grid; 
@@ -180,7 +180,7 @@
         .grand-store-summary span { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 8px; }
         .grand-store-summary div div { 
             font-size: 1.5rem; font-weight: 800; color: var(--text-main); 
-            white-space: nowrap; /* Teks lurus, dilarang turun baris */
+            white-space: nowrap; 
         }
 
         .store-columns-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-bottom: 24px; }
@@ -193,7 +193,7 @@
         .store-stat-item label { color: var(--text-muted); font-size: 0.85rem; margin: 0; font-weight: 500; }
         .store-stat-item span { 
             font-weight: 700; color: var(--text-main); text-align: right; 
-            white-space: nowrap; /* Nominal lurus, dilarang turun baris */
+            white-space: nowrap; 
         }
 
         .chart-container-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 20px; }
@@ -208,6 +208,65 @@
         
         /* LOGIN PAGE */
         .login-container { max-width: 400px; margin: 10vh auto; background: white; padding: 40px 30px; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); text-align: center; border: 1px solid var(--border); }
+
+
+        /* =========================================
+           OPTIMASI TAMPILAN MOBILE (HP)
+           ========================================= */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .card { padding: 16px; margin-bottom: 16px; }
+            
+            /* Header & Navigasi */
+            .app-header { flex-direction: column; align-items: stretch; gap: 12px; text-align: center; }
+            .app-header > div { justify-content: center; }
+            .app-title { justify-content: center; font-size: 1.3rem; }
+            .main-nav { display: flex; width: 100%; }
+            .main-nav-btn { flex: 1; padding: 10px 5px; font-size: 0.85rem; text-align: center; }
+
+            /* Dashboard Saldo */
+            .total-card { padding: 20px 15px; flex-direction: column; align-items: flex-start; text-align: left; gap: 15px; }
+            .grand-total-amount { font-size: 1.8rem; }
+            .total-card > div:last-child { width: 100%; display: flex; flex-direction: column; }
+            .total-card button { width: 100%; }
+            
+            /* Brankas Cards */
+            .vault-grid { grid-template-columns: 1fr; gap: 12px; }
+            .vault-card { padding: 16px; }
+            .vault-card .balance { font-size: 1.4rem; margin-bottom: 10px; }
+            
+            /* Table Inputs di Form */
+            .denom-input-table input { min-width: 80px; font-size: 1rem; padding: 8px; }
+            .denom-input-table th, .denom-input-table td { padding: 8px 10px; }
+            
+            /* Scroll Horizontal untuk Tabs */
+            .tab-container { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; justify-content: flex-start; }
+            .tab-btn { white-space: nowrap; font-size: 0.85rem; padding: 8px 14px; flex-shrink: 0; }
+            
+            /* Rekap Denominasi */
+            .denom-summary-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .denom-summary-card { padding: 12px 10px; }
+            .denom-badge { font-size: 1.5rem; margin-bottom: 5px; }
+            .denom-summary-card .denom-amount { font-size: 1rem; }
+            
+            /* Cashflow Toko (Slide 2) */
+            .grand-store-summary { grid-template-columns: 1fr; gap: 15px; }
+            .grand-store-summary > div { border-right: none; border-bottom: 1px solid var(--border); padding-right: 0; padding-bottom: 15px; }
+            .grand-store-summary > div:last-child { border-bottom: none; padding-bottom: 0; }
+            
+            .store-columns-grid { grid-template-columns: 1fr; }
+            .chart-container-box { grid-template-columns: 1fr; }
+            .chart-card { padding: 12px; }
+            
+            /* Modal Responsiveness */
+            .modal-content { padding: 20px; width: 95%; margin: 10px; max-height: 85vh; }
+            .modal-buttons { flex-direction: column-reverse; gap: 10px; }
+            .modal-buttons button { width: 100%; margin: 0; }
+            
+            /* Enhanced Table Responsive */
+            .table-responsive { -webkit-overflow-scrolling: touch; }
+            th, td { padding: 10px 12px; font-size: 0.85rem; }
+        }
     </style>
 </head>
 <body>
@@ -290,7 +349,7 @@
                         <input type="datetime-local" id="transDateInput">
                     </div>
                     
-                    <div class="form-group" style="overflow-x: auto;">
+                    <div class="form-group" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
                         <label>Rincian Nominal Langsung (Rp)</label>
                         <table class="denom-input-table">
                             <thead><tr><th>Pecahan</th><th style="text-align: right;">Nominal</th></tr></thead>
@@ -378,7 +437,7 @@
             <div class="grand-store-summary">
                 <div><span>PEMASUKAN TOKO</span><div id="recapStoreIncome" style="color: var(--success);">Rp 0</div></div>
                 <div><span>PENGELUARAN OP.</span><div id="recapOpExpense" style="color: var(--danger);">Rp 0</div></div>
-                <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px dashed var(--primary); border-right: 1px dashed var(--primary);">
+                <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px dashed var(--primary); border-right: none;">
                     <span style="color: var(--primary);">SELISIH BERSIH (NET)</span>
                     <div id="recapNetBalance" style="color: var(--primary);">Rp 0</div>
                 </div>
@@ -439,7 +498,7 @@
                 <div><span>TOTAL OMSET</span><div id="grandTotalStoreComputer">Rp 0</div></div>
                 <div><span>TOTAL PARKIR</span><div id="grandTotalStoreParking" style="color: var(--success);">Rp 0</div></div>
                 <div style="background: #fffbeb; border: 1px dashed #fcd34d;"><span style="color: #b45309;">FISIK (DI TOKO)</span><div id="grandTotalUncollectedCash" style="color: var(--danger);">Rp 0</div></div>
-                <div style="background: #f0fdf4; border: 1px dashed #86efac; border-right: 1px dashed #86efac;"><span style="color: #166534;">PARKIR (DI TOKO)</span><div id="grandTotalUncollectedParking" style="color: var(--success);">Rp 0</div></div>
+                <div style="background: #f0fdf4; border: 1px dashed #86efac; border-right: none;"><span style="color: #166534;">PARKIR (DI TOKO)</span><div id="grandTotalUncollectedParking" style="color: var(--success);">Rp 0</div></div>
             </div>
 
             <div class="store-columns-grid" id="storeColumnsContainer"></div>
@@ -515,7 +574,7 @@
             <label>Brankas Target:</label>
             <select id="balancingVaultSelect" onchange="renderBalancingDenomTable()"><option value="b1">Brankas Gudang</option><option value="b2">Brankas Permen Tukar</option><option value="b3">Brankas Kamar</option></select>
         </div>
-        <div class="form-group" style="overflow-x: auto;">
+        <div class="form-group" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
             <label>Nominal Riil (Aktual di Lapangan):</label>
             <table class="denom-input-table">
                 <thead><tr><th>Pecahan</th><th style="text-align:right;">Nominal (Rp)</th></tr></thead>
@@ -545,7 +604,7 @@
         <h3 style="margin-bottom:10px;">Terima Uang Utuh</h3>
         <p id="exchangeModalInfoLabel" style="font-weight:600; color:var(--primary); margin-bottom:15px;"></p>
         <input type="hidden" id="modalExchangeTxId">
-        <div class="form-group" style="overflow-x: auto;">
+        <div class="form-group" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
             <table class="denom-input-table">
                 <thead><tr><th>Pecahan</th><th style="text-align:right;">Nominal</th></tr></thead>
                 <tbody id="exchangeDenomTableBody"></tbody>
