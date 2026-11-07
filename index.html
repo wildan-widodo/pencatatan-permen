@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pencatatan Keuangan Pusat & Toko AWW</title>
-    <meta name="app-version" content="4.0.3-mobile-optimized">
+    <meta name="app-version" content="4.0.4-full-layout-fixed">
     
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -43,9 +43,10 @@
         }
 
         * { box-sizing: border-box; font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
-        body { background: var(--bg-color); color: var(--text-main); padding: 20px; line-height: 1.5; }
+        body { background: var(--bg-color); color: var(--text-main); padding: 20px; line-height: 1.5; overflow-x: hidden; }
         
-        .container { max-width: 1280px; margin: auto; display: none; animation: fadeIn 0.4s ease-out; }
+        /* CONTAINER LEBIH LEBAR UNTUK DESKTOP (Max 1500px) */
+        .container { max-width: 1500px; width: 100%; margin: auto; display: none; animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* HEADER & NAVIGATION */
@@ -61,7 +62,7 @@
         .slide-section.active { display: block; animation: fadeIn 0.3s ease-out; }
 
         /* CARDS & CONTAINERS */
-        .card { background: var(--card-bg); padding: 24px; border-radius: var(--radius-lg); margin-bottom: 24px; box-shadow: var(--shadow-md); border: 1px solid rgba(255,255,255,0.8); overflow: hidden; }
+        .card { background: var(--card-bg); padding: 24px; border-radius: var(--radius-lg); margin-bottom: 24px; box-shadow: var(--shadow-md); border: 1px solid rgba(255,255,255,0.8); overflow: hidden; width: 100%; }
         .card-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         h3 { font-size: 1.2rem; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px; margin:0; }
 
@@ -69,29 +70,22 @@
         .total-card { 
             background: linear-gradient(135deg, var(--primary) 0%, #312e81 100%); 
             color: white; padding: 25px 30px; border-radius: var(--radius-lg); margin-bottom: 25px; 
-            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.2); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; 
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.2); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; width: 100%;
         }
         .total-card h3 { color: rgba(255,255,255,0.9); font-weight: 500; font-size: 1rem; }
-        .grand-total-amount { 
-            font-size: 2.3rem; 
-            font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-top: 5px; 
-            white-space: nowrap; 
-        }
+        .grand-total-amount { font-size: 2.3rem; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-top: 5px; word-break: break-word; }
 
         /* VAULT GRID */
-        .vault-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+        .vault-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%; }
         .vault-card { 
             background: #ffffff; padding: 22px; border-radius: var(--radius-md); 
             border: 1px solid var(--border); border-top: 5px solid var(--success); 
-            box-shadow: var(--shadow-sm); transition: transform 0.2s; position: relative; 
+            box-shadow: var(--shadow-sm); transition: transform 0.2s; position: relative; width: 100%;
         }
         .vault-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
         .vault-card h4 { font-size: 1.05rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
-        .vault-card .balance { 
-            font-size: 1.6rem; 
-            font-weight: 800; color: #0f172a; margin-bottom: 15px; 
-            white-space: nowrap; 
-        }
+        .vault-card .balance { font-size: 1.6rem; font-weight: 800; color: #0f172a; margin-bottom: 15px; word-break: break-word; }
+        
         .pin-btn { 
             background: var(--danger-light); color: var(--danger); border: none; padding: 10px 12px; 
             border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; width: 100%; transition: 0.2s;
@@ -100,9 +94,11 @@
         .pin-btn.unlocked { background: var(--success-light); color: #047857; }
         .pin-btn.unlocked:hover { background: #bbf7d0; }
 
-        /* SPLIT LAYOUT */
-        .brankas-split-layout { display: grid; grid-template-columns: 1fr; gap: 24px; margin-bottom: 24px; }
-        @media (min-width: 1024px) { .brankas-split-layout { grid-template-columns: 1.2fr 1fr; } }
+        /* SPLIT LAYOUT (DESKTOP) */
+        .brankas-split-layout { display: grid; grid-template-columns: 1fr; gap: 24px; margin-bottom: 24px; width: 100%; }
+        @media (min-width: 1024px) { 
+            .brankas-split-layout { grid-template-columns: 1.2fr 1fr; gap: 30px; } 
+        }
 
         /* FORM STYLING */
         .highlight-box { background: #f8fafc; border: 1px solid var(--border); border-left: 4px solid var(--primary); padding: 15px; border-radius: var(--radius-md); margin-bottom: 20px; }
@@ -110,18 +106,18 @@
         label { display: block; margin-bottom: 8px; color: var(--text-main); font-weight: 600; font-size: 0.95rem; }
         input[type="text"], input[type="datetime-local"], input[type="email"], input[type="password"], select { 
             width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; 
-            font-size: 1rem; background: #fff; color: #333; transition: 0.2s; outline: none;
+            font-size: 1rem; background: #fff; color: #333; transition: 0.2s; outline: none; box-sizing: border-box;
         }
         input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
         
-        /* TABLE INPUT */
-        .denom-input-table { width: 100%; border-collapse: separate; border-spacing: 0; background: #fff; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
-        .denom-input-table th, .denom-input-table td { padding: 12px 15px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+        /* TABLE INPUT (RINCIAN NOMINAL LANGSUNG) */
+        .denom-input-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; border: 1px solid var(--border); table-layout: auto; }
+        .denom-input-table th, .denom-input-table td { padding: 12px 15px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; white-space: normal; word-break: break-word; }
         .denom-input-table th { background: #f8fafc; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
         .denom-input-table tr:last-child td { border-bottom: none; }
         .denom-input-table input { 
             text-align: right; font-weight: 700; font-size: 1.15rem; padding: 10px; 
-            background: #f8fafc; border: 1px solid transparent; width: 100%; min-width: 140px; 
+            background: #f8fafc; border: 1px solid transparent; width: 100%; min-width: 0; box-sizing: border-box;
         }
         .denom-input-table input:focus { background: #fff; border: 1px solid var(--primary); }
 
@@ -149,15 +145,12 @@
         .denom-summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
         .denom-summary-card { background: #fff; border: 1px solid var(--border); padding: 18px 15px; border-radius: var(--radius-md); text-align: center; box-shadow: var(--shadow-sm); transition: 0.2s; }
         .denom-badge { font-size: 2rem; margin-bottom: 8px; }
-        .denom-summary-card .denom-amount { 
-            font-weight: 800; font-size:1.2rem; 
-            white-space: nowrap; 
-        }
+        .denom-summary-card .denom-amount { font-weight: 800; font-size: 1.15rem; word-break: break-word; }
 
-        /* TABLES */
-        .table-responsive { overflow-x: auto; background: #fff; border-radius: var(--radius-md); border: 1px solid var(--border); box-shadow: var(--shadow-sm); width: 100%; }
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th, td { padding: 14px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; font-size: 0.95rem; }
+        /* TABEL UTAMA (MEMENUHI LAYAR DESKTOP TANPA SCROLL) */
+        .table-responsive { width: 100%; background: #fff; border-radius: var(--radius-md); border: 1px solid var(--border); box-shadow: var(--shadow-sm); overflow-x: visible; }
+        table { width: 100%; border-collapse: collapse; text-align: left; table-layout: auto; }
+        th, td { padding: 14px 16px; border-bottom: 1px solid var(--border); font-size: 0.95rem; white-space: normal; word-wrap: break-word; vertical-align: top; }
         th { background: #f8fafc; font-weight: 600; color: var(--text-muted); text-transform: uppercase; font-size: 0.8rem; }
         tbody tr:hover { background: #f8fafc; }
         
@@ -167,7 +160,7 @@
         
         .text-masuk { color: var(--success); font-weight: 700; }
         .text-keluar { color: var(--danger); font-weight: 700; }
-        .vertical-details { font-size: 0.85rem; line-height: 1.5; color: #475569; white-space: normal; } 
+        .vertical-details { font-size: 0.85rem; line-height: 1.5; color: #475569; } 
 
         /* STORE DASHBOARD (SLIDE 2) */
         .grand-store-summary { 
@@ -178,10 +171,7 @@
         .grand-store-summary > div { border-right: 1px solid var(--border); padding-right: 15px; }
         .grand-store-summary > div:last-child { border-right: none; padding-right: 0; }
         .grand-store-summary span { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 8px; }
-        .grand-store-summary div div { 
-            font-size: 1.5rem; font-weight: 800; color: var(--text-main); 
-            white-space: nowrap; 
-        }
+        .grand-store-summary div div { font-size: 1.5rem; font-weight: 800; color: var(--text-main); word-break: break-word; }
 
         .store-columns-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-bottom: 24px; }
         .store-column-card { background: #fff; border: 1px solid var(--border); border-top: 4px solid var(--primary); padding: 20px; border-radius: var(--radius-md); cursor: pointer; transition: 0.2s; box-shadow: var(--shadow-sm); }
@@ -191,10 +181,7 @@
         
         .store-stat-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.95rem; }
         .store-stat-item label { color: var(--text-muted); font-size: 0.85rem; margin: 0; font-weight: 500; }
-        .store-stat-item span { 
-            font-weight: 700; color: var(--text-main); text-align: right; 
-            white-space: nowrap; 
-        }
+        .store-stat-item span { font-weight: 700; color: var(--text-main); text-align: right; word-break: break-word; }
 
         .chart-container-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 20px; }
         .chart-card { background: #fff; padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
@@ -211,33 +198,37 @@
 
 
         /* =========================================
-           OPTIMASI TAMPILAN MOBILE (HP)
+           OPTIMASI TAMPILAN MOBILE (HP) 
            ========================================= */
         @media (max-width: 768px) {
-            body { padding: 10px; }
-            .card { padding: 16px; margin-bottom: 16px; }
+            body { padding: 8px; }
+            .container { padding: 0; }
+            
+            /* Penyesuaian Lebar Penuh (100%) untuk Semua Card */
+            .card, .total-card, .vault-card { width: 100%; padding: 16px; margin-bottom: 16px; box-sizing: border-box; }
+            .total-card { padding: 20px 16px; flex-direction: column; align-items: flex-start; text-align: left; gap: 15px; }
             
             /* Header & Navigasi */
-            .app-header { flex-direction: column; align-items: stretch; gap: 12px; text-align: center; }
+            .app-header { flex-direction: column; align-items: stretch; gap: 12px; text-align: center; margin-bottom: 15px; }
             .app-header > div { justify-content: center; }
             .app-title { justify-content: center; font-size: 1.3rem; }
-            .main-nav { display: flex; width: 100%; }
+            .main-nav { display: flex; width: 100%; margin-bottom: 15px; }
             .main-nav-btn { flex: 1; padding: 10px 5px; font-size: 0.85rem; text-align: center; }
 
             /* Dashboard Saldo */
-            .total-card { padding: 20px 15px; flex-direction: column; align-items: flex-start; text-align: left; gap: 15px; }
             .grand-total-amount { font-size: 1.8rem; }
             .total-card > div:last-child { width: 100%; display: flex; flex-direction: column; }
             .total-card button { width: 100%; }
             
             /* Brankas Cards */
             .vault-grid { grid-template-columns: 1fr; gap: 12px; }
-            .vault-card { padding: 16px; }
             .vault-card .balance { font-size: 1.4rem; margin-bottom: 10px; }
             
-            /* Table Inputs di Form */
-            .denom-input-table input { min-width: 80px; font-size: 1rem; padding: 8px; }
-            .denom-input-table th, .denom-input-table td { padding: 8px 10px; }
+            /* Rincian Nominal Langsung (Form) */
+            /* Memastikan form tidak melebar keluar batas layar */
+            .denom-input-table { table-layout: fixed; width: 100%; }
+            .denom-input-table th, .denom-input-table td { padding: 10px 8px; font-size: 0.85rem; }
+            .denom-input-table input { font-size: 1rem; padding: 8px; }
             
             /* Scroll Horizontal untuk Tabs */
             .tab-container { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; justify-content: flex-start; }
@@ -250,7 +241,7 @@
             .denom-summary-card .denom-amount { font-size: 1rem; }
             
             /* Cashflow Toko (Slide 2) */
-            .grand-store-summary { grid-template-columns: 1fr; gap: 15px; }
+            .grand-store-summary { grid-template-columns: 1fr; gap: 15px; padding: 16px; }
             .grand-store-summary > div { border-right: none; border-bottom: 1px solid var(--border); padding-right: 0; padding-bottom: 15px; }
             .grand-store-summary > div:last-child { border-bottom: none; padding-bottom: 0; }
             
@@ -263,9 +254,9 @@
             .modal-buttons { flex-direction: column-reverse; gap: 10px; }
             .modal-buttons button { width: 100%; margin: 0; }
             
-            /* Enhanced Table Responsive */
-            .table-responsive { -webkit-overflow-scrolling: touch; }
-            th, td { padding: 10px 12px; font-size: 0.85rem; }
+            /* KHUSUS TABEL RIWAYAT DI HP: Munculkan Scroll Horizontal Hanya di Tabelnya */
+            .table-responsive { overflow-x: auto; display: block; -webkit-overflow-scrolling: touch; }
+            th, td { padding: 10px 12px; font-size: 0.85rem; white-space: nowrap; } /* Paksa nowrap di HP agar tabel rapi saat digeser */
         }
     </style>
 </head>
@@ -349,7 +340,8 @@
                         <input type="datetime-local" id="transDateInput">
                     </div>
                     
-                    <div class="form-group" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                    <!-- Form Group tanpa overflow x manual agar lebar penuh natural -->
+                    <div class="form-group">
                         <label>Rincian Nominal Langsung (Rp)</label>
                         <table class="denom-input-table">
                             <thead><tr><th>Pecahan</th><th style="text-align: right;">Nominal</th></tr></thead>
@@ -359,7 +351,7 @@
                     
                     <div class="form-group" style="background: var(--success-light); padding: 15px; border-radius: 8px; border: 1px solid #a7f3d0; margin-top: 15px;">
                         <label style="color: #065f46; font-size: 1rem;">Total Keseluruhan</label>
-                        <input type="text" id="grandAmountInput" readonly placeholder="0" style="font-weight: 800; font-size: 1.4rem; color: #047857; background: transparent; border: none; padding: 0; text-align: right; white-space: nowrap;" required>
+                        <input type="text" id="grandAmountInput" readonly placeholder="0" style="font-weight: 800; font-size: 1.4rem; color: #047857; background: transparent; border: none; padding: 0; text-align: right; word-break: break-word;" required>
                     </div>
                     
                     <div class="form-group">
@@ -446,11 +438,11 @@
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
                 <div style="background: var(--success-light); padding: 20px; border-radius: var(--radius-md); border: 1px solid #a7f3d0;">
                     <h4 style="margin-top: 0; color: #065f46; font-size: 1.05rem; margin-bottom: 12px;">🟢 Rincian Pemasukan</h4>
-                    <div id="storeIncomeDetailBox" style="font-size: 0.95rem; line-height: 1.8; color: #064e3b; white-space: nowrap;">Memuat data...</div>
+                    <div id="storeIncomeDetailBox" style="font-size: 0.95rem; line-height: 1.8; color: #064e3b;">Memuat data...</div>
                 </div>
                 <div style="background: var(--danger-light); padding: 20px; border-radius: var(--radius-md); border: 1px solid #fecaca;">
                     <h4 style="margin-top: 0; color: #991b1b; font-size: 1.05rem; margin-bottom: 12px;">🔴 Rincian Pengeluaran</h4>
-                    <div id="opExpenseDetailBox" style="font-size: 0.95rem; line-height: 1.8; color: #7f1d1d; white-space: nowrap;">Memuat data...</div>
+                    <div id="opExpenseDetailBox" style="font-size: 0.95rem; line-height: 1.8; color: #7f1d1d;">Memuat data...</div>
                 </div>
             </div>
 
@@ -574,7 +566,7 @@
             <label>Brankas Target:</label>
             <select id="balancingVaultSelect" onchange="renderBalancingDenomTable()"><option value="b1">Brankas Gudang</option><option value="b2">Brankas Permen Tukar</option><option value="b3">Brankas Kamar</option></select>
         </div>
-        <div class="form-group" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+        <div class="form-group">
             <label>Nominal Riil (Aktual di Lapangan):</label>
             <table class="denom-input-table">
                 <thead><tr><th>Pecahan</th><th style="text-align:right;">Nominal (Rp)</th></tr></thead>
@@ -583,7 +575,7 @@
         </div>
         <div class="form-group" style="background: var(--success-light); padding: 15px; border-radius: 8px;">
             <label style="color: #065f46;">Total Aktual</label>
-            <input type="text" id="balancingGrandTotalInput" readonly style="font-weight: 800; font-size: 1.3rem; color: #047857; background: transparent; border: none; padding:0; text-align:right; white-space: nowrap;">
+            <input type="text" id="balancingGrandTotalInput" readonly style="font-weight: 800; font-size: 1.3rem; color: #047857; background: transparent; border: none; padding:0; text-align:right; word-break: break-word;">
         </div>
         <div class="form-group"><label>Alasan Penyesuaian</label><input type="text" id="balancingReason" placeholder="Contoh: Stok opname"></div>
         <div class="modal-buttons"><button class="btn btn-cancel" onclick="document.getElementById('balancingModal').style.display='none'">Batal</button><button class="btn btn-success" onclick="submitBalancing()" style="flex:1;">Simpan Balancing</button></div>
@@ -604,13 +596,13 @@
         <h3 style="margin-bottom:10px;">Terima Uang Utuh</h3>
         <p id="exchangeModalInfoLabel" style="font-weight:600; color:var(--primary); margin-bottom:15px;"></p>
         <input type="hidden" id="modalExchangeTxId">
-        <div class="form-group" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+        <div class="form-group">
             <table class="denom-input-table">
                 <thead><tr><th>Pecahan</th><th style="text-align:right;">Nominal</th></tr></thead>
                 <tbody id="exchangeDenomTableBody"></tbody>
             </table>
         </div>
-        <div class="form-group" style="background:#eff6ff; padding:15px; border-radius:8px;"><label>Total Diterima</label><input type="text" id="exchangeTotalReceivedInput" readonly style="font-weight:800; color:var(--primary); background:transparent; border:none; text-align:right; padding:0; font-size:1.3rem; white-space: nowrap;"></div>
+        <div class="form-group" style="background:#eff6ff; padding:15px; border-radius:8px;"><label>Total Diterima</label><input type="text" id="exchangeTotalReceivedInput" readonly style="font-weight:800; color:var(--primary); background:transparent; border:none; text-align:right; padding:0; font-size:1.3rem; word-break: break-word;"></div>
         <div class="modal-buttons"><button class="btn btn-cancel" onclick="document.getElementById('exchangeReceiveModal').style.display='none'">Batal</button><button class="btn btn-primary" onclick="submitExchangeReceive()" style="width:auto; flex:1;">Simpan</button></div>
     </div>
 </div>
@@ -651,7 +643,7 @@
 
 <script>
     // ==========================================
-    // LOGIKA JAVASCRIPT FIREBASE & FUNGSI (TIDAK ADA PERUBAHAN)
+    // LOGIKA JAVASCRIPT FIREBASE & FUNGSI 
     // ==========================================
     const firebaseConfig = {
         apiKey: "AIzaSyCVJcVrRg4w9xY__bvf_4Lfk0ENQ5X5F8E",
